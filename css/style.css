@@ -226,6 +226,11 @@ footer {
 @media (max-width: 720px) {
   .menu-toggle {
     display: flex;
+    order: 2;
+  }
+
+  .nav-container nav {
+    order: 1;
   }
 
   nav ul {
