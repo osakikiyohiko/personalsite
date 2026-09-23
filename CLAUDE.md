@@ -19,16 +19,37 @@ python3 -m http.server 8000
 Depois acesse `http://localhost:8000`. Também é possível abrir `index.html` diretamente no
 navegador.
 
+## Deploy
+
+Publicado via GitHub Pages a partir da branch `main` (raiz do repositório), sem etapa de build:
+qualquer `git push` para `main` já republica o site.
+
+- Repositório: https://github.com/osakikiyohiko/personalsite
+- URL publicada: https://osakikiyohiko.github.io/personalsite/
+
 ## Estrutura
 
-- `index.html` — única página do site, dividida em seções por `id` (`#inicio`, `#sobre`,
+- `index.html` — página principal (português), dividida em seções por `id` (`#inicio`, `#sobre`,
   `#habilidades`, `#experiencia`, `#projetos`, `#contato`) referenciadas pelo menu de navegação.
 - `css/style.css` — todo o estilo, usando variáveis CSS em `:root` para cores e largura máxima do
   conteúdo. Breakpoint responsivo único em `720px` para o menu mobile.
 - `js/script.js` — comportamentos da página: ano do rodapé e toggle do menu mobile (`.open` em
   `#navLinks`).
+- `en/index.html` — versão em inglês da mesma página, com os mesmos `id`s de seção (mantidos em
+  português) e referenciando `../css`, `../js` e `../img`. Cada versão tem um link no menu para a
+  outra (`EN`/`PT`) e `<link rel="alternate" hreflang>` no `<head>`. **Qualquer mudança de
+  conteúdo em `index.html` deve ser replicada, traduzida, em `en/index.html`.**
 - `img/` — imagens usadas pelo site: `andre-osaki.jpg` (avatar exibido em `#inicio`, `.avatar`
   no CSS) e `favicon.svg` (ícone oficial do FortiGate — ver nota abaixo).
+
+### Pegadinha do menu mobile
+
+Em `.nav-container` (flex com `justify-content: space-between`), o `<nav>` fica com largura zero
+no mobile porque seu `<ul>` interno vira `position: absolute` — mas o `<nav>` continua ocupando
+um item no flex. Por isso `.menu-toggle` e `nav` recebem `order` explícito dentro do
+`@media (max-width: 720px)` (`css/style.css` por volta da linha 227), garantindo que o botão
+hamburguer (último no `order`) fique colado à direita em vez de "flutuar" no meio do cabeçalho.
+Remover esse `order` reintroduz o bug.
 
 ## Fonte do conteúdo
 
