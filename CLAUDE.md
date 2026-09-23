@@ -40,7 +40,9 @@ qualquer `git push` para `main` já republica o site.
   outra (`EN`/`PT`) e `<link rel="alternate" hreflang>` no `<head>`. **Qualquer mudança de
   conteúdo em `index.html` deve ser replicada, traduzida, em `en/index.html`.**
 - `img/` — imagens usadas pelo site: `andre-osaki.jpg` (avatar exibido em `#inicio`, `.avatar`
-  no CSS) e `favicon.svg` (ícone oficial do FortiGate — ver nota abaixo).
+  no CSS), `favicon.svg` (ícone oficial do FortiGate — ver nota abaixo) e `flag-br.svg` /
+  `flag-us.svg` (bandeiras do seletor de idioma, `.lang-switch`/`.flag` no CSS; desenhadas à mão
+  em SVG, simplificadas — não usar emoji de bandeira, que não renderiza no Windows).
 
 ### Pegadinha do menu mobile
 

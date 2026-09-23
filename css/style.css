@@ -72,6 +72,19 @@ nav a {
   color: var(--color-text);
 }
 
+.lang-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.flag {
+  width: 21px;
+  height: 14px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px var(--color-border);
+}
+
 .menu-toggle {
   display: none;
   flex-direction: column;
