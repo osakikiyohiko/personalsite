@@ -8,15 +8,12 @@
   <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/" />
   <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/" />
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
-  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/style.css?v=2" />
 </head>
 <body>
   <header class="navbar">
     <div class="nav-container">
       <a href="#inicio" class="logo">André Osaki</a>
-      <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">
-        <span></span><span></span><span></span>
-      </button>
       <nav>
         <ul id="navLinks">
           <li><a href="#inicio">Início</a></li>
@@ -27,9 +24,14 @@
           <li><a href="#contato">Contato</a></li>
         </ul>
       </nav>
-      <div class="lang-switch">
-        <a href="./" lang="pt-BR" hreflang="pt-BR" aria-current="page" title="Português"><img src="img/flag-br.svg" alt="Português" class="flag" /></a>
-        <a href="en/" lang="en" hreflang="en" title="View in English"><img src="img/flag-us.svg" alt="English" class="flag" /></a>
+      <div class="nav-actions">
+        <div class="lang-switch">
+          <a href="./" lang="pt-BR" hreflang="pt-BR" aria-current="page" title="Português"><img src="img/flag-br.svg" alt="Português" class="flag" /></a>
+          <a href="en/" lang="en" hreflang="en" title="View in English"><img src="img/flag-us.svg" alt="English" class="flag" /></a>
+        </div>
+        <button id="menuToggle" class="menu-toggle" aria-label="Abrir menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
       </div>
     </div>
   </header>

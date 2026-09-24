@@ -37,7 +37,7 @@ qualquer `git push` para `main` já republica o site.
   `#navLinks`).
 - `en/index.html` — versão em inglês da mesma página, com os mesmos `id`s de seção (mantidos em
   português) e referenciando `../css`, `../js` e `../img`. Cada versão tem o seletor de idioma
-  `.lang-switch` no cabeçalho, **fora** do `<nav>`/menu hamburguer (visível também no mobile, como
+  `.lang-switch` no cabeçalho (dentro de `.nav-actions`), **fora** do `<nav>`/menu hamburguer (visível também no mobile, como
   no `pesopesasosite`): as duas bandeiras sempre aparecem, a do idioma atual com
   `aria-current="page"` (destacada pelo CSS), e `<link rel="alternate" hreflang>` no `<head>`. **Qualquer mudança de
   conteúdo em `index.html` deve ser replicada, traduzida, em `en/index.html`.**
@@ -50,11 +50,14 @@ qualquer `git push` para `main` já republica o site.
 
 Em `.nav-container` (flex com `justify-content: space-between`), o `<nav>` fica com largura zero
 no mobile porque seu `<ul>` interno vira `position: absolute` — mas o `<nav>` continua ocupando
-um item no flex. Por isso `nav`, `.lang-switch` e `.menu-toggle` recebem `order` explícito (1, 2, 3) dentro do
-`@media (max-width: 720px)` em `css/style.css`, com `margin-left: auto` no `.lang-switch` (e
-`margin-left: 0` no `nav`, que no desktop usa `auto`), garantindo que bandeiras e botão
-hamburguer fiquem colados à direita em vez de "flutuar" no meio do cabeçalho. Remover esse
-`order`/margens reintroduz o bug.
+um item no flex. Por isso o seletor de idioma e o botão hamburguer ficam juntos num único bloco
+`.nav-actions`, colocado **depois** do `<nav>` no HTML, e o `nav` tem `margin-left: auto`: assim
+bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após os links do menu),
+sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
+"flutuarem" no meio do cabeçalho no mobile.
+
+O link do CSS usa `?v=N` (`css/style.css?v=2`) para furar o cache do navegador (GitHub Pages
+serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Fonte do conteúdo
 
