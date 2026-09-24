@@ -36,8 +36,10 @@ qualquer `git push` para `main` já republica o site.
 - `js/script.js` — comportamentos da página: ano do rodapé e toggle do menu mobile (`.open` em
   `#navLinks`).
 - `en/index.html` — versão em inglês da mesma página, com os mesmos `id`s de seção (mantidos em
-  português) e referenciando `../css`, `../js` e `../img`. Cada versão tem um link no menu para a
-  outra (`EN`/`PT`) e `<link rel="alternate" hreflang>` no `<head>`. **Qualquer mudança de
+  português) e referenciando `../css`, `../js` e `../img`. Cada versão tem o seletor de idioma
+  `.lang-switch` no cabeçalho, **fora** do `<nav>`/menu hamburguer (visível também no mobile, como
+  no `pesopesasosite`): as duas bandeiras sempre aparecem, a do idioma atual com
+  `aria-current="page"` (destacada pelo CSS), e `<link rel="alternate" hreflang>` no `<head>`. **Qualquer mudança de
   conteúdo em `index.html` deve ser replicada, traduzida, em `en/index.html`.**
 - `img/` — imagens usadas pelo site: `andre-osaki.jpg` (avatar exibido em `#inicio`, `.avatar`
   no CSS), `favicon.svg` (ícone oficial do FortiGate — ver nota abaixo) e `flag-br.svg` /
@@ -48,10 +50,11 @@ qualquer `git push` para `main` já republica o site.
 
 Em `.nav-container` (flex com `justify-content: space-between`), o `<nav>` fica com largura zero
 no mobile porque seu `<ul>` interno vira `position: absolute` — mas o `<nav>` continua ocupando
-um item no flex. Por isso `.menu-toggle` e `nav` recebem `order` explícito dentro do
-`@media (max-width: 720px)` (`css/style.css` por volta da linha 227), garantindo que o botão
-hamburguer (último no `order`) fique colado à direita em vez de "flutuar" no meio do cabeçalho.
-Remover esse `order` reintroduz o bug.
+um item no flex. Por isso `nav`, `.lang-switch` e `.menu-toggle` recebem `order` explícito (1, 2, 3) dentro do
+`@media (max-width: 720px)` em `css/style.css`, com `margin-left: auto` no `.lang-switch` (e
+`margin-left: 0` no `nav`, que no desktop usa `auto`), garantindo que bandeiras e botão
+hamburguer fiquem colados à direita em vez de "flutuar" no meio do cabeçalho. Remover esse
+`order`/margens reintroduz o bug.
 
 ## Fonte do conteúdo
 

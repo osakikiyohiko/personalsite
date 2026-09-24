@@ -72,15 +72,38 @@ nav a {
   color: var(--color-text);
 }
 
+.nav-container nav {
+  margin-left: auto;
+}
+
 .lang-switch {
-  display: inline-flex;
+  display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.5rem;
+  margin-left: 1.5rem;
+}
+
+.lang-switch a {
+  display: flex;
+  border: 2px solid transparent;
+  border-radius: 3px;
+  opacity: 0.5;
+  transition: opacity 0.2s, border-color 0.2s;
+}
+
+.lang-switch a:hover {
+  opacity: 1;
+}
+
+.lang-switch a[aria-current="page"] {
+  opacity: 1;
+  border-color: var(--color-primary);
 }
 
 .flag {
-  width: 21px;
-  height: 14px;
+  display: block;
+  width: 24px;
+  height: 16px;
   border-radius: 2px;
   box-shadow: 0 0 0 1px var(--color-border);
 }
@@ -239,11 +262,18 @@ footer {
 @media (max-width: 720px) {
   .menu-toggle {
     display: flex;
-    order: 2;
+    order: 3;
   }
 
   .nav-container nav {
     order: 1;
+    margin-left: 0;
+  }
+
+  .lang-switch {
+    order: 2;
+    margin-left: auto;
+    margin-right: 0.75rem;
   }
 
   nav ul {
