@@ -1,0 +1,64 @@
+// Cloudflare Worker: valida o token do Turnstile e só então devolve os dados de contato.
+// Os dados ficam em secrets do Worker (CONTACT_EMAIL, CONTACT_PHONE), nunca no repositório.
+
+const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+function corsHeaders(origin) {
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Access-Control-Max-Age": "86400",
+    Vary: "Origin",
+  };
+}
+
+function json(body, status, origin) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store",
+      ...(origin ? corsHeaders(origin) : {}),
+    },
+  });
+}
+
+export default {
+  async fetch(request, env) {
+    const allowedOrigins = (env.ALLOWED_ORIGINS || "").split(",").map((o) => o.trim()).filter(Boolean);
+    const origin = request.headers.get("Origin");
+    const originOk = origin && allowedOrigins.includes(origin);
+
+    if (!originOk) return json({ error: "forbidden" }, 403);
+    if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: corsHeaders(origin) });
+    if (request.method !== "POST") return json({ error: "method_not_allowed" }, 405, origin);
+
+    let token;
+    try {
+      ({ token } = await request.json());
+    } catch {
+      return json({ error: "bad_request" }, 400, origin);
+    }
+    if (typeof token !== "string" || !token || token.length > 2048) {
+      return json({ error: "bad_request" }, 400, origin);
+    }
+
+    const form = new FormData();
+    form.append("secret", env.TURNSTILE_SECRET_KEY);
+    form.append("response", token);
+    const ip = request.headers.get("CF-Connecting-IP");
+    if (ip) form.append("remoteip", ip);
+
+    const outcome = await (await fetch(SITEVERIFY_URL, { method: "POST", body: form })).json();
+    const allowedHosts = allowedOrigins.map((o) => new URL(o).hostname);
+    if (!outcome.success || !allowedHosts.includes(outcome.hostname)) {
+      return json({ error: "verification_failed" }, 403, origin);
+    }
+
+    const contact = {};
+    if (env.CONTACT_EMAIL) contact.email = env.CONTACT_EMAIL;
+    if (env.CONTACT_PHONE) contact.phone = env.CONTACT_PHONE;
+    return json(contact, 200, origin);
+  },
+};

@@ -291,3 +291,24 @@ footer {
     display: flex;
   }
 }
+
+/* Contatos protegidos (Turnstile) */
+
+.contact-reveal {
+  margin-top: 2rem;
+  color: var(--color-text-muted);
+}
+
+.contact-status:empty {
+  display: none;
+}
+
+.contact-data {
+  list-style: none;
+  padding: 0;
+  font-size: 1.1rem;
+}
+
+.contact-data li + li {
+  margin-top: 0.5rem;
+}

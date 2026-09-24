@@ -8,7 +8,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/" />
   <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/" />
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
-  <link rel="stylesheet" href="css/style.css?v=2" />
+  <link rel="stylesheet" href="css/style.css?v=3" />
 </head>
 <body>
   <header class="navbar">
@@ -188,6 +188,15 @@
       <p>
         <a href="https://www.linkedin.com/in/aosaki/" target="_blank" rel="noopener" class="btn-primary">Conectar no LinkedIn</a>
       </p>
+      <div id="contactReveal" class="contact-reveal" hidden
+           data-sitekey="0x4AAAAAAFBdflfGJpBXMsuQ" data-endpoint="https://personalsite-contato.andre-osaki.workers.dev"
+           data-msg-loading="Verificando…"
+           data-msg-error="Não foi possível verificar. Recarregue a página e tente novamente.">
+        <p>Para ver e-mail e telefone, confirme que você não é um robô:</p>
+        <div id="turnstileWidget"></div>
+        <p id="contactStatus" class="contact-status" role="status"></p>
+        <ul id="contactData" class="contact-data" hidden></ul>
+      </div>
     </section>
   </main>
 
@@ -195,6 +204,6 @@
     <p>&copy; <span id="year"></span> André Osaki</p>
   </footer>
 
-  <script src="js/script.js"></script>
+  <script src="js/script.js?v=2"></script>
 </body>
 </html>

@@ -1,0 +1,12 @@
+name = "personalsite-contato"
+main = "worker.js"
+compatibility_date = "2026-09-01"
+
+[vars]
+# Origens autorizadas a chamar o Worker (separadas por vírgula).
+ALLOWED_ORIGINS = "https://osakikiyohiko.github.io,http://localhost:8000"
+
+# Secrets (NÃO colocar aqui — configurar com `wrangler secret put <NOME>`):
+#   TURNSTILE_SECRET_KEY  chave secreta do widget Turnstile
+#   CONTACT_EMAIL         e-mail exibido após a verificação (opcional)
+#   CONTACT_PHONE         telefone exibido após a verificação (opcional)
