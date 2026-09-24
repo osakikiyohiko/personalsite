@@ -44,6 +44,10 @@ export default {
       return json({ error: "bad_request" }, 400, origin);
     }
 
+    if (!env.TURNSTILE_SECRET_KEY) {
+      return json({ error: "verification_failed", codes: ["worker-missing-TURNSTILE_SECRET_KEY"] }, 500, origin);
+    }
+
     const form = new FormData();
     form.append("secret", env.TURNSTILE_SECRET_KEY);
     form.append("response", token);
@@ -53,7 +57,10 @@ export default {
     const outcome = await (await fetch(SITEVERIFY_URL, { method: "POST", body: form })).json();
     const allowedHosts = allowedOrigins.map((o) => new URL(o).hostname);
     if (!outcome.success || !allowedHosts.includes(outcome.hostname)) {
-      return json({ error: "verification_failed" }, 403, origin);
+      // Códigos do siteverify (ex.: invalid-input-secret) ajudam a diagnosticar; não são sensíveis.
+      const codes = outcome["error-codes"] || [];
+      if (outcome.success) codes.push(`hostname-mismatch:${outcome.hostname}`);
+      return json({ error: "verification_failed", codes }, 403, origin);
     }
 
     return json({ ok: true }, 200, origin);
