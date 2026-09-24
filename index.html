@@ -13,6 +13,7 @@
     // Aplica o bloqueio antes da primeira pintura, para o conteúdo não "piscar" sem blur.
     try {
       if (!(Number(localStorage.getItem("personalsite:humanVerifiedUntil")) > Date.now())) throw 0;
+      if (!localStorage.getItem("personalsite:links")) throw 0;
     } catch (e) {
       document.documentElement.classList.add("gated");
     }
@@ -205,7 +206,7 @@
     <section id="contato" class="section">
       <h2>Contato</h2>
       <p>
-        <a href="https://www.linkedin.com/in/aosaki/" target="_blank" rel="noopener" class="btn-primary">Conectar no LinkedIn</a>
+        <a data-link="linkedin" target="_blank" rel="noopener" class="btn-primary">Conectar no LinkedIn</a>
       </p>
     </section>
   </main>
@@ -214,6 +215,6 @@
     <p>&copy; <span id="year"></span> André Osaki</p>
   </footer>
 
-  <script src="js/script.js?v=3"></script>
+  <script src="js/script.js?v=4"></script>
 </body>
 </html>

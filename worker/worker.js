@@ -1,5 +1,6 @@
 // Cloudflare Worker: valida no servidor o token do Turnstile gerado pela verificação anti-robô
-// do site (#humanGate) e responde { ok: true } quando ele é válido.
+// do site (#humanGate) e, quando ele é válido, responde { ok: true, links } com os links sensíveis
+// (ex.: LINKEDIN_URL), que ficam só nas variáveis do Worker e nunca no HTML/repositório.
 
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
@@ -63,6 +64,8 @@ export default {
       return json({ error: "verification_failed", codes }, 403, origin);
     }
 
-    return json({ ok: true }, 200, origin);
+    const links = {};
+    if (env.LINKEDIN_URL) links.linkedin = env.LINKEDIN_URL;
+    return json({ ok: true, links }, 200, origin);
   },
 };

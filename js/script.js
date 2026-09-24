@@ -17,13 +17,29 @@ navLinks.querySelectorAll("a").forEach((link) => {
 
 // Verificação anti-robô na primeira visita (Cloudflare Turnstile): enquanto <html> tiver a classe
 // `gated` (aplicada por um script inline no <head>), o conteúdo fica em blur e inerte atrás de
-// #humanGate. O token é validado no servidor pelo Worker (pasta worker/); aprovado, a liberação
-// fica salva no localStorage por VERIFIED_DAYS dias.
+// #humanGate. O token é validado no servidor pelo Worker (pasta worker/), que também devolve os
+// links sensíveis (ex.: perfil do LinkedIn), mantidos fora do HTML. Aprovado, a liberação e os
+// links ficam salvos no localStorage por VERIFIED_DAYS dias.
 const VERIFIED_KEY = "personalsite:humanVerifiedUntil";
+const LINKS_KEY = "personalsite:links";
 const VERIFIED_DAYS = 30;
 const root = document.documentElement;
 
-if (root.classList.contains("gated")) {
+// Preenche os <a data-link="nome"> com as URLs recebidas do Worker (só aceita LinkedIn).
+function applyLinks(links) {
+  document.querySelectorAll("a[data-link]").forEach((a) => {
+    const url = links && links[a.dataset.link];
+    if (typeof url === "string" && url.startsWith("https://www.linkedin.com/")) a.href = url;
+  });
+}
+
+if (!root.classList.contains("gated")) {
+  try {
+    applyLinks(JSON.parse(localStorage.getItem(LINKS_KEY)));
+  } catch {
+    // Links indisponíveis: os botões ficam sem destino até a próxima verificação.
+  }
+} else {
   const gate = document.getElementById("humanGate");
   const gateStatus = document.getElementById("gateStatus");
   const { sitekey, endpoint, msgLoading, msgError } = gate.dataset;
@@ -31,9 +47,14 @@ if (root.classList.contains("gated")) {
 
   content.forEach((el) => (el.inert = true));
 
-  const unlock = () => {
+  const unlock = (links) => {
+    applyLinks(links);
     try {
-      localStorage.setItem(VERIFIED_KEY, String(Date.now() + VERIFIED_DAYS * 864e5));
+      // Sem links (Worker desatualizado), não memoriza: a próxima visita verifica de novo.
+      if (links && Object.keys(links).length) {
+        localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+        localStorage.setItem(VERIFIED_KEY, String(Date.now() + VERIFIED_DAYS * 864e5));
+      }
     } catch {
       // Sem localStorage (ex.: modo privado restrito): a verificação vale só para esta página.
     }
@@ -59,7 +80,7 @@ if (root.classList.contains("gated")) {
             body: JSON.stringify({ token }),
           });
           if (!res.ok) throw new Error(res.status);
-          unlock();
+          unlock((await res.json()).links);
         } catch {
           showError();
           turnstile.reset(widgetId);

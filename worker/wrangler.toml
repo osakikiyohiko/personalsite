@@ -8,3 +8,4 @@ ALLOWED_ORIGINS = "https://osakikiyohiko.github.io,http://localhost:8000"
 
 # Secrets (NÃO colocar aqui — configurar com `wrangler secret put <NOME>`):
 #   TURNSTILE_SECRET_KEY  chave secreta do widget Turnstile
+#   LINKEDIN_URL          URL do perfil do LinkedIn, entregue só após a verificação
