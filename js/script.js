@@ -15,38 +15,43 @@ navLinks.querySelectorAll("a").forEach((link) => {
   });
 });
 
-// Contatos protegidos por Cloudflare Turnstile: o token é validado pelo Worker (pasta worker/),
-// que só então devolve e-mail/telefone. O bloco fica oculto enquanto não estiver configurado.
-const contactReveal = document.getElementById("contactReveal");
-const { sitekey, endpoint, msgLoading, msgError } = contactReveal.dataset;
+// Verificação anti-robô na primeira visita (Cloudflare Turnstile): enquanto <html> tiver a classe
+// `gated` (aplicada por um script inline no <head>), o conteúdo fica em blur e inerte atrás de
+// #humanGate. O token é validado no servidor pelo Worker (pasta worker/); aprovado, a liberação
+// fica salva no localStorage por VERIFIED_DAYS dias.
+const VERIFIED_KEY = "personalsite:humanVerifiedUntil";
+const VERIFIED_DAYS = 30;
+const root = document.documentElement;
 
-if (sitekey && endpoint) {
-  const contactStatus = document.getElementById("contactStatus");
-  const contactData = document.getElementById("contactData");
+if (root.classList.contains("gated")) {
+  const gate = document.getElementById("humanGate");
+  const gateStatus = document.getElementById("gateStatus");
+  const { sitekey, endpoint, msgLoading, msgError } = gate.dataset;
+  const content = [...document.body.children].filter((el) => el !== gate && el.tagName !== "SCRIPT");
 
-  const showContact = (data) => {
-    const items = [
-      data.email && { href: `mailto:${data.email}`, text: data.email },
-      data.phone && { href: `tel:${data.phone.replace(/[^\d+]/g, "")}`, text: data.phone },
-    ].filter(Boolean);
-    if (!items.length) throw new Error("empty");
-    items.forEach(({ href, text }) => {
-      const a = document.createElement("a");
-      a.href = href;
-      a.textContent = text;
-      const li = document.createElement("li");
-      li.appendChild(a);
-      contactData.appendChild(li);
-    });
-    contactData.hidden = false;
+  content.forEach((el) => (el.inert = true));
+
+  const unlock = () => {
+    try {
+      localStorage.setItem(VERIFIED_KEY, String(Date.now() + VERIFIED_DAYS * 864e5));
+    } catch {
+      // Sem localStorage (ex.: modo privado restrito): a verificação vale só para esta página.
+    }
+    content.forEach((el) => (el.inert = false));
+    root.classList.remove("gated");
+  };
+
+  const showError = () => {
+    gateStatus.textContent = msgError;
   };
 
   window.onTurnstileLoad = () => {
-    turnstile.render("#turnstileWidget", {
+    const widgetId = turnstile.render("#turnstileWidget", {
       sitekey,
-      language: (document.documentElement.lang || "auto").toLowerCase(),
+      size: window.innerWidth < 360 ? "compact" : "normal",
+      language: (root.lang || "auto").toLowerCase(),
       callback: async (token) => {
-        contactStatus.textContent = msgLoading;
+        gateStatus.textContent = msgLoading;
         try {
           const res = await fetch(endpoint, {
             method: "POST",
@@ -54,22 +59,20 @@ if (sitekey && endpoint) {
             body: JSON.stringify({ token }),
           });
           if (!res.ok) throw new Error(res.status);
-          showContact(await res.json());
-          contactStatus.textContent = "";
-          document.getElementById("turnstileWidget").hidden = true;
+          unlock();
         } catch {
-          contactStatus.textContent = msgError;
+          showError();
+          turnstile.reset(widgetId);
         }
       },
-      "error-callback": () => {
-        contactStatus.textContent = msgError;
-      },
+      "error-callback": showError,
+      "expired-callback": () => turnstile.reset(widgetId),
     });
   };
 
   const script = document.createElement("script");
   script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onTurnstileLoad";
   script.async = true;
+  script.onerror = showError;
   document.head.appendChild(script);
-  contactReveal.hidden = false;
 }

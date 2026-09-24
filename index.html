@@ -8,9 +8,28 @@
   <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/" />
   <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/" />
   <link rel="icon" type="image/svg+xml" href="img/favicon.svg" />
-  <link rel="stylesheet" href="css/style.css?v=3" />
+  <link rel="stylesheet" href="css/style.css?v=4" />
+  <script>
+    // Aplica o bloqueio antes da primeira pintura, para o conteúdo não "piscar" sem blur.
+    try {
+      if (!(Number(localStorage.getItem("personalsite:humanVerifiedUntil")) > Date.now())) throw 0;
+    } catch (e) {
+      document.documentElement.classList.add("gated");
+    }
+  </script>
 </head>
 <body>
+  <div id="humanGate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle"
+       data-sitekey="0x4AAAAAAFBdflfGJpBXMsuQ" data-endpoint="https://personalsite-contato.andre-osaki.workers.dev"
+       data-msg-loading="Verificando…"
+       data-msg-error="Não foi possível verificar. Recarregue a página e tente novamente.">
+    <div class="gate-box">
+      <h2 id="gateTitle">Verificação de segurança</h2>
+      <p>Confirme que você não é um robô para acessar o site.</p>
+      <div id="turnstileWidget"></div>
+      <p id="gateStatus" class="gate-status" role="status"></p>
+    </div>
+  </div>
   <header class="navbar">
     <div class="nav-container">
       <a href="#inicio" class="logo">André Osaki</a>
@@ -188,15 +207,6 @@
       <p>
         <a href="https://www.linkedin.com/in/aosaki/" target="_blank" rel="noopener" class="btn-primary">Conectar no LinkedIn</a>
       </p>
-      <div id="contactReveal" class="contact-reveal" hidden
-           data-sitekey="0x4AAAAAAFBdflfGJpBXMsuQ" data-endpoint="https://personalsite-contato.andre-osaki.workers.dev"
-           data-msg-loading="Verificando…"
-           data-msg-error="Não foi possível verificar. Recarregue a página e tente novamente.">
-        <p>Para ver e-mail e telefone, confirme que você não é um robô:</p>
-        <div id="turnstileWidget"></div>
-        <p id="contactStatus" class="contact-status" role="status"></p>
-        <ul id="contactData" class="contact-data" hidden></ul>
-      </div>
     </section>
   </main>
 
@@ -204,6 +214,6 @@
     <p>&copy; <span id="year"></span> André Osaki</p>
   </footer>
 
-  <script src="js/script.js?v=2"></script>
+  <script src="js/script.js?v=3"></script>
 </body>
 </html>

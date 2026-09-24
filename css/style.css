@@ -292,23 +292,50 @@ footer {
   }
 }
 
-/* Contatos protegidos (Turnstile) */
+/* Verificação anti-robô (Turnstile) */
 
-.contact-reveal {
-  margin-top: 2rem;
-  color: var(--color-text-muted);
-}
-
-.contact-status:empty {
+.gate {
   display: none;
 }
 
-.contact-data {
-  list-style: none;
-  padding: 0;
-  font-size: 1.1rem;
+.gated .gate {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem;
+  background: rgba(28, 30, 33, 0.35);
 }
 
-.contact-data li + li {
-  margin-top: 0.5rem;
+.gated body {
+  overflow: hidden;
+}
+
+.gated body > :not(.gate) {
+  filter: blur(8px);
+  user-select: none;
+}
+
+.gate-box {
+  background: var(--color-bg);
+  border-radius: 8px;
+  padding: 2rem 1rem;
+  max-width: 360px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.gate-box h2 {
+  margin-top: 0;
+}
+
+.gate-box p {
+  color: var(--color-text-muted);
+}
+
+.gate-status:empty {
+  display: none;
 }

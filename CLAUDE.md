@@ -34,7 +34,7 @@ qualquer `git push` para `main` já republica o site.
 - `css/style.css` — todo o estilo, usando variáveis CSS em `:root` para cores e largura máxima do
   conteúdo. Breakpoint responsivo único em `720px` para o menu mobile.
 - `js/script.js` — comportamentos da página: ano do rodapé, toggle do menu mobile (`.open` em
-  `#navLinks`) e o widget Turnstile de `#contactReveal` (ver política de privacidade abaixo).
+  `#navLinks`) e a verificação anti-robô `#humanGate` (ver seção própria abaixo).
 - `en/index.html` — versão em inglês da mesma página, com os mesmos `id`s de seção (mantidos em
   português) e referenciando `../css`, `../js` e `../img`. Cada versão tem o seletor de idioma
   `.lang-switch` no cabeçalho (dentro de `.nav-actions`), **fora** do `<nav>`/menu hamburguer (visível também no mobile, como
@@ -56,7 +56,7 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=3`; o `js/script.js` também) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=4`; o `js/script.js` também, `?v=3`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Fonte do conteúdo
@@ -79,24 +79,25 @@ idade, estado civil ou e-mail. O único contato exposto é o link do LinkedIn
 (`https://www.linkedin.com/in/aosaki/`), usado tanto no botão de `#contato` quanto nos links de
 `#projetos`. Ao atualizar conteúdo a partir do CV, manter essa restrição.
 
-**Exceção controlada:** e-mail e telefone podem ser exibidos **somente** pelo bloco
-`#contactReveal` em `#contato`, protegido por Cloudflare Turnstile (anti-robô). Esses dados
-**nunca** vão para o HTML/JS/repositório: ficam como secrets de um Cloudflare Worker
-(`worker/worker.js`), que valida o token do Turnstile no servidor (`siteverify`, conferindo também
-o `hostname`) e só então devolve os dados, via CORS restrito a `ALLOWED_ORIGINS`.
+## Verificação anti-robô na entrada
 
-Configuração (uma vez, fora do repositório):
+Na primeira visita, o site inteiro fica em blur (e `inert`) atrás do popup `#humanGate`, com um
+Cloudflare Turnstile. A classe `gated` é aplicada em `<html>` por um script inline no `<head>` de
+cada página (antes da primeira pintura, para não "piscar" o conteúdo) e removida por
+`js/script.js` quando a verificação passa; a liberação fica em
+`localStorage["personalsite:humanVerifiedUntil"]` por 30 dias. Sem JavaScript, o site aparece
+normalmente (sem bloqueio).
 
-1. Painel Cloudflare → Turnstile → criar widget com os hostnames `osakikiyohiko.github.io` e
-   `localhost`; anotar *site key* (pública) e *secret key*.
-2. Em `worker/`: `npx wrangler deploy`, depois `npx wrangler secret put TURNSTILE_SECRET_KEY`,
-   `... CONTACT_EMAIL` e `... CONTACT_PHONE` (os dois últimos são opcionais).
-3. Preencher `data-sitekey` e `data-endpoint` (URL do Worker) em `#contactReveal` nas **duas**
-   páginas. Com esses atributos vazios o bloco fica oculto (`hidden`) e o script do Turnstile nem
-   é carregado.
+O token do Turnstile é validado no servidor por um Cloudflare Worker (`worker/worker.js`,
+publicado em `https://personalsite-contato.andre-osaki.workers.dev`), que chama o `siteverify`,
+confere o `hostname` e só aceita chamadas das origens em `ALLOWED_ORIGINS` (CORS). O Worker é
+criado e editado pelo painel da Cloudflare (o código é colado no editor web; não há Node/wrangler
+no ambiente), com a variável `ALLOWED_ORIGINS` e o secret `TURNSTILE_SECRET_KEY`. `data-sitekey`
+(pública) e `data-endpoint` ficam em `#humanGate` nas **duas** páginas.
 
-A pasta `worker/` também é servida pelo GitHub Pages — por isso não pode conter nenhum segredo
-(`.dev.vars` está no `.gitignore`).
+Limitação: o conteúdo continua no HTML estático, então o bloqueio é visual/para interação — um
+robô que lê o HTML direto não é barrado. A pasta `worker/` também é servida pelo GitHub Pages,
+por isso não pode conter nenhum segredo (`.dev.vars` está no `.gitignore`).
 
 ## Favicon
 

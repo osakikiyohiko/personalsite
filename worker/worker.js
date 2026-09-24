@@ -1,5 +1,5 @@
-// Cloudflare Worker: valida o token do Turnstile e só então devolve os dados de contato.
-// Os dados ficam em secrets do Worker (CONTACT_EMAIL, CONTACT_PHONE), nunca no repositório.
+// Cloudflare Worker: valida no servidor o token do Turnstile gerado pela verificação anti-robô
+// do site (#humanGate) e responde { ok: true } quando ele é válido.
 
 const SITEVERIFY_URL = "https://challenges.cloudflare.com/turnstile/v0/siteverify";
 
@@ -56,9 +56,6 @@ export default {
       return json({ error: "verification_failed" }, 403, origin);
     }
 
-    const contact = {};
-    if (env.CONTACT_EMAIL) contact.email = env.CONTACT_EMAIL;
-    if (env.CONTACT_PHONE) contact.phone = env.CONTACT_PHONE;
-    return json(contact, 200, origin);
+    return json({ ok: true }, 200, origin);
   },
 };

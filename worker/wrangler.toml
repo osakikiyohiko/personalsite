@@ -8,5 +8,3 @@ ALLOWED_ORIGINS = "https://osakikiyohiko.github.io,http://localhost:8000"
 
 # Secrets (NÃO colocar aqui — configurar com `wrangler secret put <NOME>`):
 #   TURNSTILE_SECRET_KEY  chave secreta do widget Turnstile
-#   CONTACT_EMAIL         e-mail exibido após a verificação (opcional)
-#   CONTACT_PHONE         telefone exibido após a verificação (opcional)
