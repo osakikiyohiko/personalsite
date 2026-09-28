@@ -66,7 +66,7 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=9`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=7`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=10`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=8`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Ferramentas: Firewall Multivendor Configurator
@@ -102,7 +102,9 @@ e `jeremmfr/junos` (~> 2.20; commit a cada alteração; hostname e tcp-mss ficam
 com o comando CLI, porque `junos_system`/`junos_security` gerenciam o bloco inteiro). O Cisco ASA
 não tem provider com VPN IPsec (`CiscoDevNet/ciscoasa` cobre só interfaces, objetos, ACLs e rotas),
 então `tf: null` e a coluna dele aparece como "não suportado". Comentários do HCL vêm de `TF_TEXT`
-(pt/en). Nada disso foi testado com `terraform plan` em equipamento real.
+(pt/en). No modo Terraform aparece também o tutorial `#fwTfGuide` (HTML estático em cada
+página, `<details>`): credenciais por fabricante, `TF_VAR_*`, init/validate/plan/apply, commit do
+Palo Alto, verificação do túnel e cuidados com o `terraform.tfstate`. Nada disso foi testado com `terraform plan` em equipamento real.
 
 ## Fonte do conteúdo
 

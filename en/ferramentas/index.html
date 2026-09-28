@@ -8,7 +8,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/ferramentas/" />
   <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/ferramentas/" />
   <link rel="icon" type="image/svg+xml" href="../../img/favicon.svg" />
-  <link rel="stylesheet" href="../../css/style.css?v=9" />
+  <link rel="stylesheet" href="../../css/style.css?v=10" />
   <script>
     // Aplica o bloqueio antes da primeira pintura, para o conteúdo não "piscar" sem blur. Só no
     // domínio publicado: aberto localmente (file://, localhost), o Turnstile e o Worker recusam a
@@ -228,6 +228,82 @@
               <button type="button" class="btn-secondary btn-copy" data-site="b">Copy Site B configuration</button>
             </div>
           </div>
+          <details id="fwTfGuide" class="tf-guide" open hidden>
+            <summary>How to apply the configuration with Terraform</summary>
+            <ol>
+              <li>
+                <strong>Prerequisites.</strong> Terraform 1.5 or later installed
+                (<code>terraform version</code>) and management access to each firewall from the machine
+                running Terraform: HTTPS API on FortiGate and Palo Alto, SSH/NETCONF on the SRX.
+              </li>
+              <li>
+                <strong>API credentials</strong>, created once on each firewall:
+                <table>
+                  <thead><tr><th>Vendor</th><th>Credential</th><th>Variables</th></tr></thead>
+                  <tbody>
+                    <tr><td>FortiGate</td><td>Token of a <em>REST API Admin</em> (System › Administrators › Create New › REST API Admin), with the Terraform machine IP in <em>Trusted Hosts</em>.</td><td><code>TF_VAR_fortigate_host</code><br /><code>TF_VAR_fortigate_token</code></td></tr>
+                    <tr><td>Palo Alto</td><td>API key generated with <code>curl -k "https://&lt;firewall&gt;/api/?type=keygen&amp;user=&lt;user&gt;&amp;password=&lt;password&gt;"</code> (value of the <code>&lt;key&gt;</code> tag).</td><td><code>TF_VAR_panos_host</code><br /><code>TF_VAR_panos_api_key</code></td></tr>
+                    <tr><td>Juniper SRX</td><td>User with configuration rights and NETCONF enabled: <code>set system services netconf ssh</code> + <code>commit</code>.</td><td><code>TF_VAR_junos_host</code><br /><code>TF_VAR_junos_username</code><br /><code>TF_VAR_junos_password</code></td></tr>
+                  </tbody>
+                </table>
+              </li>
+              <li>
+                <strong>One folder per site.</strong> Click <em>Copy Site A configuration</em> and save it as
+                <code>main.tf</code> in its own folder; repeat for Site B in another folder.
+                <pre><code>mkdir -p vpn/site-a vpn/site-b
+cd vpn/site-a
+# paste the Site A configuration into main.tf</code></pre>
+              </li>
+              <li>
+                <strong>Provide the credentials as environment variables</strong> (they stay out of files).
+                FortiGate example — use the names from the table above for the other vendors:
+                <pre><code># Linux / macOS
+export TF_VAR_fortigate_host="192.0.2.10"
+export TF_VAR_fortigate_token="&lt;token&gt;"
+
+# Windows (PowerShell)
+$env:TF_VAR_fortigate_host = "192.0.2.10"
+$env:TF_VAR_fortigate_token = "&lt;token&gt;"</code></pre>
+                The PSK comes as the default value of <code>vpn_psk</code>; to keep it out of the file, delete
+                the <code>default</code> line and set <code>TF_VAR_vpn_psk</code> to the same value on both sites.
+              </li>
+              <li>
+                <strong>Initialize, validate and review the plan.</strong> <code>init</code> downloads the
+                provider; <code>plan</code> shows everything that will be created without touching the firewall.
+                <pre><code>terraform init
+terraform fmt
+terraform validate
+terraform plan -out=site-a.tfplan</code></pre>
+              </li>
+              <li>
+                <strong>Apply.</strong>
+                <pre><code>terraform apply site-a.tfplan</code></pre>
+                On FortiGate changes take effect immediately; on the SRX the provider commits after each
+                change; on <strong>Palo Alto you must commit</strong> after apply (<em>Commit</em> button in
+                the web UI or <code>configure</code> → <code>commit</code> in the CLI).
+              </li>
+              <li>
+                <strong>Repeat steps 3 to 6 in the Site B folder</strong> and check that the tunnel is up:
+                <pre><code># FortiGate
+get vpn ipsec tunnel summary
+diagnose vpn ike gateway list
+
+# Palo Alto
+show vpn ike-sa
+show vpn ipsec-sa
+
+# Juniper SRX
+show security ike security-associations
+show security ipsec security-associations</code></pre>
+              </li>
+              <li>
+                <strong>Caveats.</strong> The <code>terraform.tfstate</code> file stores the PSK and other
+                secrets in plain text: do not publish it or commit it to Git (use an encrypted remote backend
+                in production). To undo everything, <code>terraform destroy</code> removes the created
+                objects — review the plan before confirming.
+              </li>
+            </ol>
+          </details>
           <div id="fwBlocks" class="fw-blocks"></div>
         </div>
       </div>
@@ -239,6 +315,6 @@
   </footer>
 
   <script src="../../js/script.js?v=5"></script>
-  <script src="../../js/fwconfig.js?v=7"></script>
+  <script src="../../js/fwconfig.js?v=8"></script>
 </body>
 </html>

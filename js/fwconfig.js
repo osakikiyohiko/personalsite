@@ -1179,6 +1179,7 @@ resource "junos_static_route" "to_site_${peer.toLowerCase()}" {
         : msg.msgTfUnsupported;
     });
     renderBlocks(configs, labels, naText);
+    $("fwTfGuide").hidden = mode !== "tf";
 
     const output = $("fwOutput");
     output.hidden = false;

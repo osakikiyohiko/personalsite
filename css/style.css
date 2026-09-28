@@ -694,6 +694,63 @@ button.btn-primary {
   font-size: 0.85rem;
 }
 
+.tf-guide {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+  border: 1px solid #5c4ee5;
+  border-radius: 6px;
+}
+
+.tf-guide summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tf-guide ol {
+  margin: 0.75rem 0 0;
+  padding-left: 1.25rem;
+}
+
+.tf-guide li {
+  margin-bottom: 0.75rem;
+}
+
+.tf-guide pre {
+  margin: 0.5rem 0;
+  overflow-x: auto;
+  padding: 0.75rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #e2e8f0;
+  background: #0f172a;
+  border-radius: 6px;
+}
+
+.tf-guide code {
+  font-size: 0.85em;
+}
+
+.tf-guide table {
+  display: block;
+  overflow-x: auto;
+  margin-top: 0.5rem;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.tf-guide th,
+.tf-guide td {
+  padding: 0.4rem 0.6rem;
+  text-align: left;
+  vertical-align: top;
+  border: 1px solid var(--color-border);
+}
+
+.tf-guide th {
+  background: var(--color-bg-alt);
+}
+
 .fw-blocks {
   display: flex;
   flex-direction: column;
