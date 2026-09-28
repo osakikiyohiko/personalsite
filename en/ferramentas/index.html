@@ -8,7 +8,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/ferramentas/" />
   <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/ferramentas/" />
   <link rel="icon" type="image/svg+xml" href="../../img/favicon.svg" />
-  <link rel="stylesheet" href="../../css/style.css?v=8" />
+  <link rel="stylesheet" href="../../css/style.css?v=9" />
   <script>
     // Aplica o bloqueio antes da primeira pintura, para o conteúdo não "piscar" sem blur. Só no
     // domínio publicado: aberto localmente (file://, localhost), o Turnstile e o Worker recusam a
@@ -101,12 +101,16 @@
            data-msg-if-default="vendor default"
            data-msg-if-invalid="Invalid interface name: {field}. Use the physical interface name, without spaces or subinterface (e.g. ge-0/0/2, port3, ethernet1/3)."
            data-msg-if-same="The WAN and LAN interfaces of {site} must be different."
+           data-msg-tf-unsupported="Not supported in Terraform: there is no Cisco ASA provider with IPsec VPN support (CiscoDevNet/ciscoasa only covers interfaces, objects, ACLs and routes). Use the CLI Deploy for this site."
+           data-msg-tf-na-short="Not supported in Terraform — use the CLI Deploy."
+           data-msg-tf-none="None of the chosen firewalls has a Terraform provider with IPsec VPN support. Use the CLI Deploy."
            data-msg-ifaces="Interfaces — WAN: {wan} · LAN: {lan}">
         <h3>Firewall Multivendor Configurator</h3>
         <p class="tool-intro">
           Build a site-to-site IPsec VPN between two sites: drag a firewall to each site, enter
           the public IPs and LANs, and click <strong>Deploy</strong> to generate the configuration
-          for each side — each end can use a different vendor.
+          for each side — each end can use a different vendor. Use <strong>Deploy Terraform</strong>
+          to generate the same configuration as a Terraform project.
         </p>
 
         <div class="fw-palette" role="group" aria-label="Firewalls">
@@ -205,7 +209,10 @@
             the strongest supported by all four vendors (FortiOS 6.2+, PAN-OS 10.0+, Junos 15.1X49+, ASA 9.0+).</p>
         </div>
 
-        <button type="button" id="fwDeploy" class="btn-primary">Deploy</button>
+        <div class="tool-actions">
+          <button type="button" id="fwDeploy" class="btn-primary">Deploy</button>
+          <button type="button" id="fwDeployTf" class="btn-primary btn-tf">Deploy Terraform</button>
+        </div>
         <p id="fwStatus" class="tool-status" role="status"></p>
 
         <div id="fwOutput" class="fw-output" hidden>
@@ -232,6 +239,6 @@
   </footer>
 
   <script src="../../js/script.js?v=5"></script>
-  <script src="../../js/fwconfig.js?v=6"></script>
+  <script src="../../js/fwconfig.js?v=7"></script>
 </body>
 </html>

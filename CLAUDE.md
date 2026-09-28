@@ -66,7 +66,7 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=8`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=6`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=9`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=7`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Ferramentas: Firewall Multivendor Configurator
@@ -89,6 +89,20 @@ interface de túnel), com `vpn-filter` para o tráfego vindo da VPN e NAT de ise
 dinâmicos vêm dos `data-msg-*` de `#fwTool`, traduzidos em cada página; os ícones são `<symbol>`
 SVG inline (genéricos, sem logos dos fabricantes). Os defaults usam faixas de documentação
 (203.0.113.0/24, 198.51.100.0/24). Tudo roda no navegador; nada é enviado a servidor.
+
+### Deploy Terraform
+
+O botão **Deploy Terraform** gera, com os mesmos dados, um projeto Terraform por site (um
+`main.tf` por firewall), nos mesmos blocos da CLI mais o bloco `provider` (required_providers,
+variáveis de acesso sensíveis e a PSK como variável sensível). Geradores `fortigateTf`,
+`paloaltoTf` e `srxTf` (campo `tf` em `VENDORS`), com atributos conferidos na documentação oficial
+dos providers `fortinetdev/fortios` (~> 1.26), `PaloAltoNetworks/panos` (~> 2.0, sintaxe v2 com
+`location`; regras via `*_policy_rules` para não apagar as existentes; o provider não faz commit)
+e `jeremmfr/junos` (~> 2.20; commit a cada alteração; hostname e tcp-mss ficam como comentário
+com o comando CLI, porque `junos_system`/`junos_security` gerenciam o bloco inteiro). O Cisco ASA
+não tem provider com VPN IPsec (`CiscoDevNet/ciscoasa` cobre só interfaces, objetos, ACLs e rotas),
+então `tf: null` e a coluna dele aparece como "não suportado". Comentários do HCL vêm de `TF_TEXT`
+(pt/en). Nada disso foi testado com `terraform plan` em equipamento real.
 
 ## Fonte do conteúdo
 

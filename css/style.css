@@ -400,6 +400,20 @@ footer {
   background: #eef2ff;
 }
 
+.tool-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btn-tf {
+  background: #5c4ee5;
+}
+
+.btn-tf:hover {
+  background: #4337c9;
+}
+
 button.btn-primary {
   border: 0;
   font: inherit;

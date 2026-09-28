@@ -1,6 +1,6 @@
 // Firewall Multivendor Configurator (ferramentas/): o usuário arrasta um firewall (Juniper SRX,
 // FortiGate, Palo Alto ou Cisco ASA) para o Site A e para o Site B, informa os IPs públicos (ISP) e as LANs,
-// e "Deploy" gera a configuração de cada lado, separada em blocos com título e descrição
+// e "Deploy" gera a configuração de cada lado (CLI; "Deploy Terraform" gera um projeto Terraform), separada em blocos com título e descrição
 // (interfaces, zonas, roteamento, fase 1, fase 2, políticas, NAT…), com a VPN IPsec site-to-site
 // entre os dois sites. Os textos da interface vêm dos atributos data-msg-*
 // de #fwTool, traduzidos em cada página.
@@ -74,6 +74,7 @@
 
   const BLOCK_TEXT = {
     pt: {
+      provider: ["Provider Terraform", "Declara o provider do fabricante, a conexão com o firewall (credenciais em variáveis sensíveis) e a PSK da VPN. Cada site é um projeto separado: rode terraform init e terraform apply em cada um."],
       system: ["Sistema", "Nome do equipamento (hostname), que identifica o firewall em logs e na gerência."],
       interfaces: ["Interfaces", "Endereços da WAN (IP público do ISP) e da LAN, além da interface de túnel nas VPNs baseadas em rota."],
       zones: ["Zonas de segurança", "Agrupa as interfaces em zonas (untrust, trust e vpn), usadas como origem e destino das políticas."],
@@ -85,6 +86,7 @@
       nat: ["NAT de saída", "Traduz a LAN para o IP público da WAN no acesso à Internet; o tráfego da VPN segue sem NAT."],
     },
     en: {
+      provider: ["Terraform provider", "Declares the vendor provider, the firewall connection (credentials in sensitive variables) and the VPN PSK. Each site is a separate project: run terraform init and terraform apply in each one."],
       system: ["System", "Device name (hostname), which identifies the firewall in logs and management."],
       interfaces: ["Interfaces", "WAN (ISP public IP) and LAN addresses, plus the tunnel interface on route-based VPNs."],
       zones: ["Security zones", "Groups the interfaces into zones (untrust, trust and vpn), used as source and destination in policies."],
@@ -401,11 +403,536 @@ object network LAN-SITE-${site}
     };
   }
 
+  // Geradores Terraform ("Deploy Terraform"): um projeto por site (main.tf), com os mesmos blocos
+  // da CLI mais o bloco "provider". Atributos conferidos na documentação oficial de cada provider:
+  // fortinetdev/fortios 1.26, PaloAltoNetworks/panos 2.0 e jeremmfr/junos 2.20. O Cisco ASA não
+  // tem provider com suporte a VPN IPsec (CiscoDevNet/ciscoasa cobre só interfaces, objetos, ACLs e
+  // rotas, pela REST API descontinuada), então fica sem geração Terraform.
+
+  const TF_TEXT = {
+    pt: {
+      host: "Endereço de gerência do firewall",
+      user: "Usuário SSH/NETCONF",
+      psk: "Chave pré-compartilhada da VPN (a mesma nos dois sites). Prefira definir por TF_VAR_vpn_psk ou terraform.tfvars em vez de deixar no código.",
+      insecure: "Certificado autoassinado; use false com certificado válido.",
+      fgtImport: "As interfaces físicas já existem no FortiGate: se o apply falhar ao criá-las, importe-as antes (terraform import fortios_system_interface.wan <nome>).",
+      panCommit: "O provider não faz commit: depois do apply, faça commit no firewall (GUI, CLI ou a action panos_commit).",
+      panVr: 'Usa o virtual router "default", que já existe no firewall.',
+      junosCommit: "O provider faz commit no equipamento a cada alteração.",
+      junosSystem: 'Hostname fora do Terraform: o recurso junos_system gerencia todo o bloco "system" e poderia sobrescrever outras opções. Configure pela CLI:',
+      junosMss: 'Ajuste de MSS fora do Terraform (o recurso junos_security gerencia todo o bloco "security"). Configure pela CLI:',
+    },
+    en: {
+      host: "Firewall management address",
+      user: "SSH/NETCONF user",
+      psk: "VPN pre-shared key (the same on both sites). Prefer setting it via TF_VAR_vpn_psk or terraform.tfvars instead of keeping it in code.",
+      insecure: "Self-signed certificate; use false with a valid certificate.",
+      fgtImport: "Physical interfaces already exist on the FortiGate: if apply fails to create them, import them first (terraform import fortios_system_interface.wan <name>).",
+      panCommit: "The provider does not commit: after apply, commit on the firewall (GUI, CLI or the panos_commit action).",
+      panVr: 'Uses the "default" virtual router, which already exists on the firewall.',
+      junosCommit: "The provider commits on the device after each change.",
+      junosSystem: 'Hostname outside Terraform: the junos_system resource manages the whole "system" block and could overwrite other options. Configure it via CLI:',
+      junosMss: 'MSS adjustment outside Terraform (the junos_security resource manages the whole "security" block). Configure it via CLI:',
+    },
+  };
+  const tfText = TF_TEXT[document.documentElement.lang.startsWith("pt") ? "pt" : "en"];
+
+  const tfId = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_");
+
+  // Cabeçalho comum: required_providers, variáveis de acesso e a PSK (sensível).
+  function tfHeader(provider, source, version, vars, providerBody) {
+    const varBlocks = vars
+      .map(([name, desc, sensitive]) =>
+        sensitive
+          ? `variable "${name}" {\n  type      = string\n  sensitive = true\n}`
+          : `variable "${name}" {\n  description = "${desc}"\n  type        = string\n}`
+      )
+      .join("\n\n");
+    return `terraform {
+  required_providers {
+    ${provider} = {
+      source  = "${source}"
+      version = "${version}"
+    }
+  }
+}
+
+${varBlocks}
+
+provider "${provider}" {
+${providerBody}
+}`;
+  }
+
+  const tfPsk = (psk) => `# ${tfText.psk}
+variable "vpn_psk" {
+  type      = string
+  sensitive = true
+  default   = "${psk}"
+}`;
+
+  function fortigateTf({ site, peer, L, P, psk, wan, lan }) {
+    const vpn = `VPN-SITE-${peer}`;
+    const id = tfId(vpn);
+    const lanL = `lan_site_${site.toLowerCase()}`;
+    const lanP = `lan_site_${peer.toLowerCase()}`;
+    const policy = (name, src, dst, srcaddr, dstaddr, extra = "") => `resource "fortios_firewall_policy" "${tfId(name)}" {
+  name     = "${name}"
+  action   = "accept"
+  schedule = "always"${extra}
+
+  srcintf {
+    name = ${src}
+  }
+  dstintf {
+    name = ${dst}
+  }
+  srcaddr {
+    name = ${srcaddr}
+  }
+  dstaddr {
+    name = ${dstaddr}
+  }
+  service {
+    name = "ALL"
+  }
+}`;
+    return {
+      provider: `${tfHeader("fortios", "fortinetdev/fortios", "~> 1.26", [
+        ["fortigate_host", `${tfText.host} FW-SITE-${site}`],
+        ["fortigate_token", "", true],
+      ], `  hostname = var.fortigate_host
+  token    = var.fortigate_token
+  insecure = true # ${tfText.insecure}`)}
+
+${tfPsk(psk)}`,
+      system: `resource "fortios_system_global" "global" {
+  hostname = "FW-SITE-${site}"
+}`,
+      interfaces: `# ${tfText.fgtImport}
+resource "fortios_system_interface" "wan" {
+  name        = "${wan}"
+  vdom        = "root"
+  mode        = "static"
+  ip          = "${L.wan.ip} ${L.wan.mask}"
+  allowaccess = "ping"
+}
+
+resource "fortios_system_interface" "lan" {
+  name        = "${lan}"
+  vdom        = "root"
+  mode        = "static"
+  ip          = "${L.lan.ip} ${L.lan.mask}"
+  allowaccess = "ping https ssh"
+}`,
+      addresses: `resource "fortios_firewall_address" "${lanL}" {
+  name   = "LAN-SITE-${site}"
+  type   = "ipmask"
+  subnet = "${L.lan.net} ${L.lan.mask}"
+}
+
+resource "fortios_firewall_address" "${lanP}" {
+  name   = "LAN-SITE-${peer}"
+  type   = "ipmask"
+  subnet = "${P.lan.net} ${P.lan.mask}"
+}`,
+      phase1: `resource "fortios_vpnipsec_phase1interface" "${id}" {
+  name        = "${vpn}"
+  interface   = fortios_system_interface.wan.name
+  ike_version = "2"
+  peertype    = "any"
+  net_device  = "disable"
+  proposal    = "aes256gcm-prfsha384"
+  dhgrp       = "20"
+  keylife     = 28800
+  dpd         = "on-idle"
+  remote_gw   = "${P.wan.ip}"
+  psksecret   = var.vpn_psk
+}`,
+      phase2: `resource "fortios_vpnipsec_phase2interface" "${id}" {
+  name           = "${vpn}"
+  phase1name     = fortios_vpnipsec_phase1interface.${id}.name
+  proposal       = "aes256gcm"
+  pfs            = "enable"
+  dhgrp          = "20"
+  replay         = "enable"
+  keylifeseconds = 3600
+  auto_negotiate = "enable"
+  src_addr_type  = "subnet"
+  src_subnet     = "${L.lan.net} ${L.lan.mask}"
+  dst_addr_type  = "subnet"
+  dst_subnet     = "${P.lan.net} ${P.lan.mask}"
+}`,
+      routing: `resource "fortios_router_static" "default" {
+  dst     = "0.0.0.0 0.0.0.0"
+  gateway = "${L.gw}"
+  device  = fortios_system_interface.wan.name
+}
+
+resource "fortios_router_static" "to_site_${peer.toLowerCase()}" {
+  dst    = "${P.lan.net} ${P.lan.mask}"
+  device = fortios_vpnipsec_phase1interface.${id}.name
+}
+
+resource "fortios_router_static" "to_site_${peer.toLowerCase()}_blackhole" {
+  dst       = "${P.lan.net} ${P.lan.mask}"
+  blackhole = "enable"
+  distance  = 254
+}`,
+      policies: [
+        policy("LAN-TO-VPN", "fortios_system_interface.lan.name", `fortios_vpnipsec_phase1interface.${id}.name`, `fortios_firewall_address.${lanL}.name`, `fortios_firewall_address.${lanP}.name`),
+        policy("VPN-TO-LAN", `fortios_vpnipsec_phase1interface.${id}.name`, "fortios_system_interface.lan.name", `fortios_firewall_address.${lanP}.name`, `fortios_firewall_address.${lanL}.name`),
+        policy("LAN-TO-INTERNET", "fortios_system_interface.lan.name", "fortios_system_interface.wan.name", `fortios_firewall_address.${lanL}.name`, '"all"', '\n  nat      = "enable"'),
+      ].join("\n\n"),
+    };
+  }
+
+  function paloaltoTf({ site, peer, L, P, psk, wan, lan }) {
+    const ifRes = (name) => (/^ae\d/.test(name) ? "panos_aggregate_interface" : "panos_ethernet_interface");
+    const gw = `GW-SITE-${peer}`;
+    const tun = `VPN-SITE-${peer}`;
+    const lanL = `lan_site_${site.toLowerCase()}`;
+    const lanP = `lan_site_${peer.toLowerCase()}`;
+    const rule = (name, from, to, src, dst, service) => `    {
+      name                  = "${name}"
+      source_zones          = [panos_zone.${from}.name]
+      destination_zones     = [panos_zone.${to}.name]
+      source_addresses      = [${src}]
+      destination_addresses = [${dst}]
+      applications          = ["any"]
+      services              = ["${service}"]
+      action                = "allow"
+    },`;
+    const vri = (name, ref) => `resource "panos_virtual_router_interface" "${name}" {
+  location       = local.ngfw
+  virtual_router = "default"
+  interface      = ${ref}
+}`;
+    return {
+      provider: `${tfHeader("panos", "PaloAltoNetworks/panos", "~> 2.0", [
+        ["panos_host", `${tfText.host} FW-SITE-${site}`],
+        ["panos_api_key", "", true],
+      ], `  hostname                = var.panos_host
+  api_key                 = var.panos_api_key
+  skip_verify_certificate = true # ${tfText.insecure}`)}
+
+# ${tfText.panCommit}
+
+${tfPsk(psk)}
+
+locals {
+  ngfw = { ngfw = { ngfw_device = "localhost.localdomain" } }
+  vsys = { vsys = { name = "vsys1", ngfw_device = "localhost.localdomain" } }
+}`,
+      system: `resource "panos_general_settings" "system" {
+  location = { system = { device = "localhost.localdomain" } }
+  hostname = "FW-SITE-${site}"
+}`,
+      interfaces: `resource "${ifRes(wan)}" "wan" {
+  location = local.ngfw
+  name     = "${wan}"
+  layer3 = {
+    ips = [{ name = "${L.wan.cidr}" }]
+  }
+}
+
+resource "${ifRes(lan)}" "lan" {
+  location = local.ngfw
+  name     = "${lan}"
+  layer3 = {
+    ips = [{ name = "${L.lan.cidr}" }]
+  }
+}
+
+resource "panos_tunnel_interface" "vpn" {
+  location = local.ngfw
+  name     = "tunnel.1"
+  comment  = "VPN to Site ${peer}"
+}`,
+      zones: ["untrust:wan", "trust:lan"]
+        .map((z) => z.split(":"))
+        .map(([zone, iface]) => `resource "panos_zone" "${zone}" {
+  location = local.vsys
+  name     = "${zone}"
+  network = {
+    layer3 = [${ifRes(iface === "wan" ? wan : lan)}.${iface}.name]
+  }
+}`)
+        .concat(`resource "panos_zone" "vpn" {
+  location = local.vsys
+  name     = "vpn"
+  network = {
+    layer3 = [panos_tunnel_interface.vpn.name]
+  }
+}`)
+        .join("\n\n"),
+      addresses: `resource "panos_address" "${lanL}" {
+  location   = local.vsys
+  name       = "LAN-SITE-${site}"
+  ip_netmask = "${L.lan.netCidr}"
+}
+
+resource "panos_address" "${lanP}" {
+  location   = local.vsys
+  name       = "LAN-SITE-${peer}"
+  ip_netmask = "${P.lan.netCidr}"
+}`,
+      phase1: `resource "panos_ike_crypto_profile" "ike" {
+  location   = local.ngfw
+  name       = "IKE-AES256GCM-P384"
+  encryption = ["aes-256-gcm"]
+  hash       = ["sha384"]
+  dh_group   = ["group20"]
+  lifetime   = { seconds = 28800 }
+}
+
+resource "panos_ike_gateway" "${tfId(gw)}" {
+  location = local.ngfw
+  name     = "${gw}"
+  authentication = {
+    pre_shared_key = { key = var.vpn_psk }
+  }
+  local_address = {
+    interface = ${ifRes(wan)}.wan.name
+    ip        = "${L.wan.cidr}"
+  }
+  peer_address = { ip = "${P.wan.ip}" }
+  protocol = {
+    version = "ikev2"
+    ikev2 = {
+      ike_crypto_profile = panos_ike_crypto_profile.ike.name
+      dpd                = { enable = true }
+    }
+  }
+}`,
+      phase2: `resource "panos_ipsec_crypto_profile" "ipsec" {
+  location = local.ngfw
+  name     = "IPSEC-AES256GCM"
+  esp = {
+    encryption     = ["aes-256-gcm"]
+    authentication = ["none"]
+  }
+  dh_group = "group20"
+  lifetime = { seconds = 3600 }
+}
+
+resource "panos_ipsec_tunnel" "${tfId(tun)}" {
+  location         = local.ngfw
+  name             = "${tun}"
+  tunnel_interface = panos_tunnel_interface.vpn.name
+  anti_replay      = true
+  auto_key = {
+    ike_gateway          = [{ name = panos_ike_gateway.${tfId(gw)}.name }]
+    ipsec_crypto_profile = panos_ipsec_crypto_profile.ipsec.name
+    proxy_id = [{
+      name     = "PROXY-1"
+      local    = "${L.lan.netCidr}"
+      remote   = "${P.lan.netCidr}"
+      protocol = { any = {} }
+    }]
+  }
+}`,
+      routing: `# ${tfText.panVr}
+${vri("wan", `${ifRes(wan)}.wan.name`)}
+
+${vri("lan", `${ifRes(lan)}.lan.name`)}
+
+${vri("vpn", "panos_tunnel_interface.vpn.name")}
+
+resource "panos_virtual_router_static_route_ipv4" "default" {
+  location       = local.ngfw
+  virtual_router = "default"
+  name           = "DEFAULT"
+  destination    = "0.0.0.0/0"
+  interface      = ${ifRes(wan)}.wan.name
+  nexthop        = { ip_address = "${L.gw}" }
+}
+
+resource "panos_virtual_router_static_route_ipv4" "to_site_${peer.toLowerCase()}" {
+  location       = local.ngfw
+  virtual_router = "default"
+  name           = "TO-SITE-${peer}"
+  destination    = "${P.lan.netCidr}"
+  interface      = panos_tunnel_interface.vpn.name
+}`,
+      policies: `resource "panos_security_policy_rules" "vpn_site_${peer.toLowerCase()}" {
+  location = local.vsys
+  position = { where = "last" }
+  rules = [
+${rule("LAN-TO-VPN", "trust", "vpn", `panos_address.${lanL}.name`, `panos_address.${lanP}.name`, "any")}
+${rule("VPN-TO-LAN", "vpn", "trust", `panos_address.${lanP}.name`, `panos_address.${lanL}.name`, "any")}
+${rule("LAN-TO-INTERNET", "trust", "untrust", `panos_address.${lanL}.name`, '"any"', "application-default")}
+  ]
+}`,
+      nat: `resource "panos_nat_policy_rules" "snat_internet" {
+  location = local.vsys
+  position = { where = "last" }
+  rules = [{
+    name                  = "SNAT-INTERNET"
+    source_zones          = [panos_zone.trust.name]
+    destination_zone      = [panos_zone.untrust.name]
+    source_addresses      = [panos_address.${lanL}.name]
+    destination_addresses = ["any"]
+    service               = "any"
+    source_translation = {
+      dynamic_ip_and_port = {
+        interface_address = { interface = ${ifRes(wan)}.wan.name }
+      }
+    }
+  }]
+}`,
+    };
+  }
+
+  function srxTf({ site, peer, L, P, psk, wan, lan }) {
+    const gw = `GW-SITE-${peer}`;
+    const policy = (res, from, to, name, src, dst) => `resource "junos_security_policy" "${res}" {
+  from_zone = junos_security_zone.${from}.name
+  to_zone   = junos_security_zone.${to}.name
+  policy {
+    name                      = "${name}"
+    match_source_address      = ["${src}"]
+    match_destination_address = ["${dst}"]
+    match_application         = ["any"]
+  }
+}`;
+    const logical = (res, name, zone, cidr, services) => `resource "junos_interface_logical" "${res}" {
+  name                      = "${name}"
+  security_zone             = junos_security_zone.${zone}.name${services ? `\n  security_inbound_services = [${services}]` : ""}
+  family_inet {${cidr ? `\n    address {\n      cidr_ip = "${cidr}"\n    }\n  ` : ""}}
+}`;
+    return {
+      provider: `${tfHeader("junos", "jeremmfr/junos", "~> 2.20", [
+        ["junos_host", `${tfText.host} FW-SITE-${site}`],
+        ["junos_username", tfText.user],
+        ["junos_password", "", true],
+      ], `  ip       = var.junos_host
+  username = var.junos_username
+  password = var.junos_password`)}
+
+# ${tfText.junosCommit}
+
+${tfPsk(psk)}`,
+      system: `# ${tfText.junosSystem}
+#   set system host-name FW-SITE-${site}`,
+      interfaces: `resource "junos_interface_physical" "wan" {
+  name        = "${wan}"
+  description = "WAN - ISP ${site}"
+}
+
+resource "junos_interface_physical" "lan" {
+  name        = "${lan}"
+  description = "LAN ${site}"
+}
+
+${logical("wan", `${wan}.0`, "untrust", L.wan.cidr, '"ike", "ping"')}
+
+${logical("lan", `${lan}.0`, "trust", L.lan.cidr, '"ping", "ssh"')}
+
+${logical("st0", "st0.0", "vpn", "", "")}`,
+      zones: ["untrust", "trust", "vpn"]
+        .map((z) => `resource "junos_security_zone" "${z}" {\n  name = "${z}"${
+          z === "trust" ? `\n  address_book {\n    name    = "LAN-SITE-${site}"\n    network = "${L.lan.netCidr}"\n  }` :
+          z === "vpn" ? `\n  address_book {\n    name    = "LAN-SITE-${peer}"\n    network = "${P.lan.netCidr}"\n  }` : ""
+        }\n}`)
+        .join("\n\n"),
+      phase1: `resource "junos_security_ike_proposal" "ike" {
+  name                     = "IKE-AES256GCM-P384"
+  authentication_method    = "pre-shared-keys"
+  dh_group                 = "group20"
+  authentication_algorithm = "sha-384"
+  encryption_algorithm     = "aes-256-gcm"
+  lifetime_seconds         = 28800
+}
+
+resource "junos_security_ike_policy" "ike" {
+  name                = "IKE-POL-SITE-${peer}"
+  proposals           = [junos_security_ike_proposal.ike.name]
+  pre_shared_key_text = var.vpn_psk
+}
+
+resource "junos_security_ike_gateway" "${tfId(gw)}" {
+  name               = "${gw}"
+  address            = ["${P.wan.ip}"]
+  policy             = junos_security_ike_policy.ike.name
+  external_interface = junos_interface_logical.wan.name
+  local_address      = "${L.wan.ip}"
+  version            = "v2-only"
+  dead_peer_detection {
+    send_mode = "probe-idle-tunnel"
+  }
+}`,
+      phase2: `resource "junos_security_ipsec_proposal" "ipsec" {
+  name                 = "IPSEC-AES256GCM"
+  protocol             = "esp"
+  encryption_algorithm = "aes-256-gcm"
+  lifetime_seconds     = 3600
+}
+
+resource "junos_security_ipsec_policy" "ipsec" {
+  name      = "IPSEC-POL-SITE-${peer}"
+  proposals = [junos_security_ipsec_proposal.ipsec.name]
+  pfs_keys  = "group20"
+}
+
+resource "junos_security_ipsec_vpn" "vpn_site_${peer.toLowerCase()}" {
+  name              = "VPN-SITE-${peer}"
+  bind_interface    = junos_interface_logical.st0.name
+  establish_tunnels = "immediately"
+  ike {
+    gateway          = junos_security_ike_gateway.${tfId(gw)}.name
+    policy           = junos_security_ipsec_policy.ipsec.name
+    identity_local   = "${L.lan.netCidr}"
+    identity_remote  = "${P.lan.netCidr}"
+    identity_service = "any"
+  }
+}
+
+# ${tfText.junosMss}
+#   set security flow tcp-mss ipsec-vpn mss 1350`,
+      routing: `resource "junos_static_route" "default" {
+  destination = "0.0.0.0/0"
+  next_hop    = ["${L.gw}"]
+}
+
+resource "junos_static_route" "to_site_${peer.toLowerCase()}" {
+  destination = "${P.lan.netCidr}"
+  next_hop    = [junos_interface_logical.st0.name]
+}`,
+      policies: [
+        policy("trust_to_vpn", "trust", "vpn", "LAN-TO-VPN", `LAN-SITE-${site}`, `LAN-SITE-${peer}`),
+        policy("vpn_to_trust", "vpn", "trust", "VPN-TO-LAN", `LAN-SITE-${peer}`, `LAN-SITE-${site}`),
+        policy("trust_to_untrust", "trust", "untrust", "LAN-TO-INTERNET", `LAN-SITE-${site}`, "any"),
+      ].join("\n\n"),
+      nat: `resource "junos_security_nat_source" "trust_to_untrust" {
+  name = "TRUST-TO-UNTRUST"
+  from {
+    type  = "zone"
+    value = [junos_security_zone.trust.name]
+  }
+  to {
+    type  = "zone"
+    value = [junos_security_zone.untrust.name]
+  }
+  rule {
+    name = "SNAT-INTERNET"
+    match {
+      source_address      = ["${L.lan.netCidr}"]
+      destination_address = ["0.0.0.0/0"]
+    }
+    then {
+      type = "interface"
+    }
+  }
+}`,
+    };
+  }
+
   const VENDORS = {
-    srx: { build: srx, wan: "ge-0/0/0", lan: "ge-0/0/1" },
-    fortigate: { build: fortigate, wan: "wan1", lan: "internal" },
-    paloalto: { build: paloalto, wan: "ethernet1/1", lan: "ethernet1/2" },
-    asa: { build: asa, wan: "GigabitEthernet0/0", lan: "GigabitEthernet0/1" },
+    srx: { build: srx, tf: srxTf, wan: "ge-0/0/0", lan: "ge-0/0/1" },
+    fortigate: { build: fortigate, tf: fortigateTf, wan: "wan1", lan: "internal" },
+    paloalto: { build: paloalto, tf: paloaltoTf, wan: "ethernet1/1", lan: "ethernet1/2" },
+    asa: { build: asa, tf: null, wan: "GigabitEthernet0/0", lan: "GigabitEthernet0/1" },
   };
   const vendorLabel = (v) => tool.querySelector(`.fw-item[data-vendor="${v}"]`).dataset.label;
 
@@ -567,7 +1094,7 @@ object network LAN-SITE-${site}
 
   // Ordem de aplicação, comum aos quatro fabricantes (no FortiOS a interface do túnel só existe
   // depois da fase 1, por isso o roteamento vem depois das fases da VPN).
-  const BLOCK_ORDER = ["system", "interfaces", "zones", "addresses", "phase1", "phase2", "routing", "policies", "nat"];
+  const BLOCK_ORDER = ["provider", "system", "interfaces", "zones", "addresses", "phase1", "phase2", "routing", "policies", "nat"];
 
   const el = (tag, className, text) => {
     const node = document.createElement(tag);
@@ -579,7 +1106,7 @@ object network LAN-SITE-${site}
   // Uma linha por bloco: título numerado e descrição curta, com a configuração do Site A e a do
   // Site B lado a lado (cada uma com botão de copiar). Bloco que um fabricante não usa (ex.: zonas
   // e NAT no FortiGate) aparece como "não se aplica".
-  function renderBlocks(configs, labels) {
+  function renderBlocks(configs, labels, naText) {
     const keys = BLOCK_ORDER.filter((key) => configs.a[key] || configs.b[key]);
     $("fwBlocks").replaceChildren(
       ...keys.map((key, i) => {
@@ -603,7 +1130,7 @@ object network LAN-SITE-${site}
             pre.appendChild(el("code", "", text));
             cell.append(cellHead, pre);
           } else {
-            cell.append(cellHead, el("p", "fw-na", msg.msgNa));
+            cell.append(cellHead, el("p", "fw-na", naText[site]));
           }
           cols.appendChild(cell);
         });
@@ -613,7 +1140,8 @@ object network LAN-SITE-${site}
     );
   }
 
-  function deploy() {
+  // mode: "cli" (comandos do equipamento) ou "tf" (projeto Terraform por site).
+  function deploy(mode) {
     if (!slots.a || !slots.b) {
       Object.entries(slotEls).forEach(([site, el]) => !slots[site] && el.classList.add("missing"));
       setTimeout(() => Object.values(slotEls).forEach((el) => el.classList.remove("missing")), 1200);
@@ -629,19 +1157,28 @@ object network LAN-SITE-${site}
     const psk = pskIn.value.trim();
     if (!/^[A-Za-z0-9!@#$%&*_+=.,:-]{20,64}$/.test(psk)) return fail(pskIn, msg.msgPsk);
 
+    // Terraform: o ASA não tem provider com VPN; se nenhum dos dois sites tiver, não há o que gerar.
+    if (mode === "tf" && !VENDORS[slots.a].tf && !VENDORS[slots.b].tf) return setStatus(msg.msgTfNone, "error");
+
     const sites = { a: { L: A, P: B, peer: "b" }, b: { L: B, P: A, peer: "a" } };
     const configs = {};
     const labels = {};
+    const naText = {};
     Object.entries(sites).forEach(([site, { L, P, peer }]) => {
       const S = site.toUpperCase();
       const v = VENDORS[slots[site]];
       const { wan, lan } = L.ifaces;
-      configs[site] = v.build({ site: S, peer: peer.toUpperCase(), L, P, psk, wan, lan });
+      const build = mode === "tf" ? v.tf : v.build;
+      configs[site] = build ? build({ site: S, peer: peer.toUpperCase(), L, P, psk, wan, lan }) : {};
+      naText[site] = build ? msg.msgNa : msg.msgTfNaShort;
+      tool.querySelector(`.btn-copy[data-site="${site}"]`).hidden = !build;
       labels[site] = `Site ${S} · ${vendorLabel(slots[site])}`;
-      $(`fwTitle${S}`).textContent = labels[site];
-      $(`fwNote${S}`).textContent = msg.msgIfaces.replace("{wan}", wan).replace("{lan}", lan);
+      $(`fwTitle${S}`).textContent = `${labels[site]} · ${mode === "tf" ? "Terraform" : "CLI"}`;
+      $(`fwNote${S}`).textContent = build
+        ? msg.msgIfaces.replace("{wan}", wan).replace("{lan}", lan)
+        : msg.msgTfUnsupported;
     });
-    renderBlocks(configs, labels);
+    renderBlocks(configs, labels, naText);
 
     const output = $("fwOutput");
     output.hidden = false;
@@ -650,7 +1187,8 @@ object network LAN-SITE-${site}
     output.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  $("fwDeploy").addEventListener("click", deploy);
+  $("fwDeploy").addEventListener("click", () => deploy("cli"));
+  $("fwDeployTf").addEventListener("click", () => deploy("tf"));
 
   // Copiar configuração
 
