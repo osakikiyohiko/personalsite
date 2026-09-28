@@ -55,6 +55,7 @@ a:hover {
 }
 
 .logo {
+  white-space: nowrap;
   font-weight: 700;
   font-size: 1.1rem;
   color: var(--color-text);
@@ -265,7 +266,18 @@ footer {
 
 /* Responsive */
 
-@media (max-width: 720px) {
+/* Com a aba Ferramentas, o menu completo fica justo logo acima do breakpoint mobile. */
+@media (max-width: 900px) {
+  nav ul {
+    gap: 1rem;
+  }
+
+  nav a {
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 820px) {
   .menu-toggle {
     display: flex;
   }
@@ -338,4 +350,355 @@ footer {
 
 .gate-status:empty {
   display: none;
+}
+
+/* Ferramentas: Firewall Multivendor Configurator */
+
+.icon-defs {
+  position: absolute;
+  width: 0;
+  height: 0;
+  overflow: hidden;
+}
+
+.tool {
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1.5rem;
+}
+
+.tool-intro,
+.tool-hint,
+.tool-crypto,
+.fw-note {
+  color: var(--color-text-muted);
+}
+
+.tool-hint {
+  font-size: 0.9rem;
+}
+
+.btn-secondary {
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: #fff;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  padding: 0.4rem 0.9rem;
+  cursor: pointer;
+}
+
+.btn-secondary:hover {
+  background: #eef2ff;
+}
+
+button.btn-primary {
+  border: 0;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.fw-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.fw-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  width: 100px;
+  padding: 0.6rem 0.4rem;
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text);
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  cursor: grab;
+}
+
+.fw-item:hover {
+  border-color: var(--color-text-muted);
+}
+
+.fw-item[aria-pressed="true"] {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 2px var(--color-primary);
+}
+
+.fw-icon,
+.node-icon {
+  width: 40px;
+  height: 30px;
+}
+
+.v-srx .fw-icon { color: #2f6b1f; }
+.v-juniper .fw-icon { color: #84b135; }
+.v-fortigate .fw-icon { color: #da291c; }
+.v-paloalto .fw-icon { color: #fa582d; }
+
+.topology {
+  display: grid;
+  grid-template-columns: 1fr minmax(110px, 160px) 1fr;
+  gap: 1rem;
+  margin: 1.5rem 0;
+}
+
+.site {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 1rem;
+  border: 1px dashed var(--color-text-muted);
+  border-radius: 8px;
+}
+
+.site h4 {
+  margin: 0 0 -0.5rem;
+  text-align: center;
+}
+
+.node {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.75rem;
+  text-align: center;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+/* Cabos verticais ligando ISP, firewall e LAN dentro de cada site. */
+.node + .node::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 100%;
+  height: calc(1.5rem + 2px);
+  border-left: 2px solid var(--color-text-muted);
+}
+
+.node-icon {
+  color: var(--color-text-muted);
+}
+
+.node label,
+.tool-options label {
+  display: block;
+  width: 100%;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+
+.node input,
+.tool-options input {
+  display: block;
+  width: 100%;
+  margin-top: 0.15rem;
+  padding: 0.35rem 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  background: #fff;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
+.node input[aria-invalid="true"],
+.tool-options input[aria-invalid="true"] {
+  border-color: #c0392b;
+  box-shadow: 0 0 0 1px #c0392b;
+}
+
+.fw-slot {
+  justify-content: center;
+  min-height: 100px;
+  background: #fff;
+  border: 2px dashed var(--color-primary);
+  cursor: pointer;
+}
+
+.fw-slot.pick,
+.fw-slot.over {
+  background: #eef2ff;
+}
+
+.fw-slot.missing {
+  border-color: #c0392b;
+}
+
+.fw-slot.filled {
+  border-style: solid;
+  border-color: var(--color-border);
+  cursor: grab;
+}
+
+.fw-slot-empty {
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.fw-placed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.fw-placed .fw-icon {
+  width: 56px;
+  height: 42px;
+}
+
+.fw-remove {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  font-size: 1.2rem;
+  line-height: 1;
+  color: var(--color-text-muted);
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.fw-remove:hover {
+  color: #c0392b;
+}
+
+.wan-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: 4rem;
+  text-align: center;
+}
+
+.wan-cloud {
+  width: 80px;
+  height: 50px;
+  color: var(--color-text-muted);
+}
+
+.tunnel {
+  width: 100%;
+  padding-top: 0.35rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  border-top: 3px dashed var(--color-text-muted);
+}
+
+.tunnel.up {
+  font-weight: 600;
+  color: #1f9d55;
+  border-top-style: solid;
+  border-color: #1f9d55;
+}
+
+.tool-options {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.tool-options label {
+  flex: 1 1 260px;
+  max-width: 420px;
+}
+
+.tool-crypto {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.tool-status {
+  min-height: 1.6em;
+  font-size: 0.95rem;
+}
+
+.tool-status.error {
+  color: #c0392b;
+}
+
+.tool-status.ok {
+  color: #1f9d55;
+}
+
+.fw-output {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+  scroll-margin-top: 5rem;
+}
+
+.fw-output[hidden] {
+  display: none;
+}
+
+.fw-config {
+  min-width: 0;
+}
+
+.fw-config-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fw-config-head h4 {
+  margin: 0;
+}
+
+.fw-note {
+  margin: 0.4rem 0;
+  font-size: 0.85rem;
+}
+
+.fw-config pre {
+  margin: 0;
+  max-height: 460px;
+  overflow: auto;
+  padding: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #e2e8f0;
+  background: #0f172a;
+  border-radius: 6px;
+}
+
+@media (max-width: 720px) {
+  .tool {
+    padding: 1rem;
+  }
+
+  .topology {
+    grid-template-columns: 1fr;
+  }
+
+  .wan-link {
+    margin-top: 0;
+  }
+
+  .fw-output {
+    grid-template-columns: 1fr;
+  }
 }

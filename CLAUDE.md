@@ -30,11 +30,15 @@ qualquer `git push` para `main` já republica o site.
 ## Estrutura
 
 - `index.html` — página principal (português), dividida em seções por `id` (`#inicio`, `#sobre`,
-  `#habilidades`, `#experiencia`, `#projetos`, `#contato`) referenciadas pelo menu de navegação.
+  `#habilidades`, `#experiencia`, `#projetos`, `#ferramentas`, `#contato`) referenciadas pelo menu de navegação.
 - `css/style.css` — todo o estilo, usando variáveis CSS em `:root` para cores e largura máxima do
-  conteúdo. Breakpoint responsivo único em `720px` para o menu mobile.
+  conteúdo. Breakpoint do menu mobile em `820px` (com a aba Ferramentas, os links não cabem
+  abaixo disso; entre 821–900px o espaçamento do menu é reduzido); a topologia da ferramenta
+  empilha abaixo de `720px`.
 - `js/script.js` — comportamentos da página: ano do rodapé, toggle do menu mobile (`.open` em
   `#navLinks`) e a verificação anti-robô `#humanGate` (ver seção própria abaixo).
+- `js/fwconfig.js` — o "Firewall Multivendor Configurator" de `#ferramentas` (ver seção própria
+  abaixo).
 - `en/index.html` — versão em inglês da mesma página, com os mesmos `id`s de seção (mantidos em
   português) e referenciando `../css`, `../js` e `../img`. Cada versão tem o seletor de idioma
   `.lang-switch` no cabeçalho (dentro de `.nav-actions`), **fora** do `<nav>`/menu hamburguer (visível também no mobile, como
@@ -56,8 +60,21 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=4`; o `js/script.js` também, `?v=4`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=5`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=2`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
+
+## Ferramentas: Firewall Multivendor Configurator
+
+Seção `#ferramentas` (aba "Ferramentas"/"Tools"), lógica em `js/fwconfig.js`. Topologia com
+Site A e Site B (ISP com IP público/gateway, slot de firewall, LAN); o usuário arrasta (ou
+clica/toca, alternativa para celular) um firewall da paleta — SRX, Juniper, FortiGate, Palo Alto —
+para cada slot, e **Deploy** valida os dados e gera a configuração de cada lado (interfaces, rota
+default, NAT de saída, políticas e VPN IPsec site-to-site com a suíte mais forte comum aos quatro fabricantes: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384/DH 20, PFS, DPD — ver comentário no topo do JS), com
+botão "Copiar configuração" em cada painel. SRX e Juniper saem da mesma lista de linhas Junos
+(`junosLines`): SRX em formato `set`, Juniper em formato hierárquico com chaves. Os textos
+dinâmicos vêm dos `data-msg-*` de `#fwTool`, traduzidos em cada página; os ícones são `<symbol>`
+SVG inline (genéricos, sem logos dos fabricantes). Os defaults usam faixas de documentação
+(203.0.113.0/24, 198.51.100.0/24). Tudo roda no navegador; nada é enviado a servidor.
 
 ## Fonte do conteúdo
 
@@ -92,7 +109,10 @@ Cloudflare Turnstile. A classe `gated` é aplicada em `<html>` por um script inl
 cada página (antes da primeira pintura, para não "piscar" o conteúdo) e removida por
 `js/script.js` quando a verificação passa; a liberação fica em
 `localStorage["personalsite:humanVerifiedUntil"]` por 30 dias. Sem JavaScript, o site aparece
-normalmente (sem bloqueio).
+normalmente (sem bloqueio). O bloqueio só é aplicado no domínio publicado
+(`osakikiyohiko.github.io`): aberto localmente (`file://`, `localhost`), o Turnstile e o Worker
+recusam a origem e o popup travaria o site com erro de conexão, então ele não aparece — os
+links sensíveis (LinkedIn) ficam sem destino nesse caso.
 
 O token do Turnstile é validado no servidor por um Cloudflare Worker (`worker/worker.js`,
 publicado em `https://personalsite-contato.andre-osaki.workers.dev`), que chama o `siteverify`,
