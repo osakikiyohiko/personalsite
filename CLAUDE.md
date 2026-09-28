@@ -66,14 +66,16 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=8`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=5`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=8`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=6`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Ferramentas: Firewall Multivendor Configurator
 
 Página `ferramentas/` (aba "Ferramentas"/"Tools"; em inglês `en/ferramentas/`), lógica em
 `js/fwconfig.js`. A página usa `.section-wide` (1280px) para a comparação lado a lado. Topologia com
-Site A e Site B (ISP com IP público/gateway, slot de firewall, LAN); o usuário arrasta (ou
+Site A e Site B (ISP com IP público/gateway e interface WAN do firewall, slot de firewall, LAN
+com IP e interface LAN do firewall — interfaces opcionais: vazias usam o padrão do fabricante,
+mostrado como placeholder e definido em `VENDORS`); o usuário arrasta (ou
 clica/toca, alternativa para celular) um firewall da paleta — Juniper SRX, FortiGate, Palo Alto, Cisco ASA —
 para cada slot, e **Deploy** valida os dados e gera a configuração de cada lado (interfaces, rota
 default, NAT de saída, políticas e VPN IPsec site-to-site com a suíte mais forte comum aos quatro fabricantes: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384/DH 20, PFS, DPD — ver comentário no topo do JS), com

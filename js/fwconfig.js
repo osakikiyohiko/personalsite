@@ -67,7 +67,8 @@
     return [...bytes].map((b) => chars[b % chars.length]).join("");
   }
 
-  // Geradores de configuração. `c` = { site, peer, L (local), P (peer), psk }. Cada gerador devolve
+  // Geradores de configuração. `c` = { site, peer, L (local), P (peer), psk, wan, lan }, sendo
+  // wan/lan os nomes das interfaces do firewall local (informados ou o padrão do fabricante). Cada gerador devolve
   // os blocos da configuração ({ chave: texto }), na ordem de aplicação; o título e a descrição de
   // cada bloco vêm de BLOCK_TEXT, no idioma da página.
 
@@ -98,7 +99,7 @@
   const blockText = BLOCK_TEXT[document.documentElement.lang.startsWith("pt") ? "pt" : "en"];
 
   // Junos (SRX): comandos `set`, colados em modo de configuração.
-  function srx({ site, peer, L, P, psk }) {
+  function srx({ site, peer, L, P, psk, wan, lan }) {
     const ike = "set security ike";
     const ipsec = "set security ipsec";
     const gw = `gateway GW-SITE-${peer}`;
@@ -115,15 +116,15 @@
     const blocks = {
       system: [`set system host-name FW-SITE-${site}`],
       interfaces: [
-        `set interfaces ge-0/0/0 unit 0 family inet address ${L.wan.cidr}`,
-        `set interfaces ge-0/0/1 unit 0 family inet address ${L.lan.cidr}`,
+        `set interfaces ${wan} unit 0 family inet address ${L.wan.cidr}`,
+        `set interfaces ${lan} unit 0 family inet address ${L.lan.cidr}`,
         "set interfaces st0 unit 0 family inet",
       ],
       zones: [
-        `${zone} untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services ike`,
-        `${zone} untrust interfaces ge-0/0/0.0 host-inbound-traffic system-services ping`,
-        `${zone} trust interfaces ge-0/0/1.0 host-inbound-traffic system-services ping`,
-        `${zone} trust interfaces ge-0/0/1.0 host-inbound-traffic system-services ssh`,
+        `${zone} untrust interfaces ${wan}.0 host-inbound-traffic system-services ike`,
+        `${zone} untrust interfaces ${wan}.0 host-inbound-traffic system-services ping`,
+        `${zone} trust interfaces ${lan}.0 host-inbound-traffic system-services ping`,
+        `${zone} trust interfaces ${lan}.0 host-inbound-traffic system-services ssh`,
         `${zone} vpn interfaces st0.0`,
       ],
       addresses: [
@@ -145,7 +146,7 @@
         `${ike} policy IKE-POL-SITE-${peer} pre-shared-key ascii-text "${psk}"`,
         `${ike} ${gw} ike-policy IKE-POL-SITE-${peer}`,
         `${ike} ${gw} address ${P.wan.ip}`,
-        `${ike} ${gw} external-interface ge-0/0/0.0`,
+        `${ike} ${gw} external-interface ${wan}.0`,
         `${ike} ${gw} local-address ${L.wan.ip}`,
         `${ike} ${gw} version v2-only`,
         `${ike} ${gw} dead-peer-detection probe-idle-tunnel`,
@@ -182,19 +183,19 @@
     return Object.fromEntries(Object.entries(blocks).map(([k, lines]) => [k, lines.join("\n")]));
   }
 
-  function fortigate({ site, peer, L, P, psk }) {
+  function fortigate({ site, peer, L, P, psk, wan, lan }) {
     const vpn = `VPN-SITE-${peer}`;
     return {
       system: `config system global
     set hostname "FW-SITE-${site}"
 end`,
       interfaces: `config system interface
-    edit "wan1"
+    edit "${wan}"
         set mode static
         set ip ${L.wan.ip} ${L.wan.mask}
         set allowaccess ping
     next
-    edit "internal"
+    edit "${lan}"
         set ip ${L.lan.ip} ${L.lan.mask}
         set allowaccess ping https ssh
     next
@@ -209,7 +210,7 @@ end`,
 end`,
       phase1: `config vpn ipsec phase1-interface
     edit "${vpn}"
-        set interface "wan1"
+        set interface "${wan}"
         set ike-version 2
         set peertype any
         set net-device disable
@@ -237,7 +238,7 @@ end`,
       routing: `config router static
     edit 0
         set gateway ${L.gw}
-        set device "wan1"
+        set device "${wan}"
     next
     edit 0
         set dst ${P.lan.net} ${P.lan.mask}
@@ -252,7 +253,7 @@ end`,
       policies: `config firewall policy
     edit 0
         set name "LAN-TO-VPN"
-        set srcintf "internal"
+        set srcintf "${lan}"
         set dstintf "${vpn}"
         set srcaddr "LAN-SITE-${site}"
         set dstaddr "LAN-SITE-${peer}"
@@ -263,7 +264,7 @@ end`,
     edit 0
         set name "VPN-TO-LAN"
         set srcintf "${vpn}"
-        set dstintf "internal"
+        set dstintf "${lan}"
         set srcaddr "LAN-SITE-${peer}"
         set dstaddr "LAN-SITE-${site}"
         set action accept
@@ -272,8 +273,8 @@ end`,
     next
     edit 0
         set name "LAN-TO-INTERNET"
-        set srcintf "internal"
-        set dstintf "wan1"
+        set srcintf "${lan}"
+        set dstintf "${wan}"
         set srcaddr "LAN-SITE-${site}"
         set dstaddr "all"
         set action accept
@@ -285,7 +286,9 @@ end`,
     };
   }
 
-  function paloalto({ site, peer, L, P, psk }) {
+  function paloalto({ site, peer, L, P, psk, wan, lan }) {
+    // Interfaces agregadas (aeN) ficam em outro ramo da árvore de configuração do PAN-OS.
+    const ifType = (name) => (/^ae\d/.test(name) ? "aggregate-ethernet" : "ethernet");
     const gw = `GW-SITE-${peer}`;
     const tun = `VPN-SITE-${peer}`;
     const vr = "set network virtual-router default";
@@ -294,17 +297,17 @@ end`,
     const rule = "set rulebase security rules";
     return {
       system: `set deviceconfig system hostname FW-SITE-${site}`,
-      interfaces: `set network interface ethernet ethernet1/1 layer3 ip ${L.wan.cidr}
-set network interface ethernet ethernet1/2 layer3 ip ${L.lan.cidr}
+      interfaces: `set network interface ${ifType(wan)} ${wan} layer3 ip ${L.wan.cidr}
+set network interface ${ifType(lan)} ${lan} layer3 ip ${L.lan.cidr}
 set network interface tunnel units tunnel.1 comment "VPN to Site ${peer}"`,
-      zones: `set zone untrust network layer3 ethernet1/1
-set zone trust network layer3 ethernet1/2
+      zones: `set zone untrust network layer3 ${wan}
+set zone trust network layer3 ${lan}
 set zone vpn network layer3 tunnel.1`,
       addresses: `set address LAN-SITE-${site} ip-netmask ${L.lan.netCidr}
 set address LAN-SITE-${peer} ip-netmask ${P.lan.netCidr}`,
-      routing: `${vr} interface [ ethernet1/1 ethernet1/2 tunnel.1 ]
+      routing: `${vr} interface [ ${wan} ${lan} tunnel.1 ]
 ${vr} routing-table ip static-route DEFAULT destination 0.0.0.0/0
-${vr} routing-table ip static-route DEFAULT interface ethernet1/1
+${vr} routing-table ip static-route DEFAULT interface ${wan}
 ${vr} routing-table ip static-route DEFAULT nexthop ip-address ${L.gw}
 ${vr} routing-table ip static-route TO-SITE-${peer} destination ${P.lan.netCidr}
 ${vr} routing-table ip static-route TO-SITE-${peer} interface tunnel.1`,
@@ -316,7 +319,7 @@ set network ike gateway ${gw} authentication pre-shared-key key "${psk}"
 set network ike gateway ${gw} protocol version ikev2
 set network ike gateway ${gw} protocol ikev2 ike-crypto-profile IKE-AES256GCM-P384
 set network ike gateway ${gw} protocol ikev2 dpd enable
-set network ike gateway ${gw} local-address interface ethernet1/1
+set network ike gateway ${gw} local-address interface ${wan}
 set network ike gateway ${gw} local-address ip ${L.wan.cidr}
 set network ike gateway ${gw} peer-address ip ${P.wan.ip}`,
       phase2: `${espP} esp encryption aes-256-gcm
@@ -333,22 +336,22 @@ set network tunnel ipsec ${tun} auto-key proxy-id PROXY-1 protocol any`,
 ${rule} VPN-TO-LAN from vpn to trust source LAN-SITE-${peer} destination LAN-SITE-${site} source-user any category any application any service any action allow
 ${rule} LAN-TO-INTERNET from trust to untrust source LAN-SITE-${site} destination any source-user any category any application any service application-default action allow`,
       nat: `set rulebase nat rules SNAT-INTERNET from trust to untrust source LAN-SITE-${site} destination any service any
-set rulebase nat rules SNAT-INTERNET source-translation dynamic-ip-and-port interface-address interface ethernet1/1`,
+set rulebase nat rules SNAT-INTERNET source-translation dynamic-ip-and-port interface-address interface ${wan}`,
     };
   }
 
   // Cisco ASA (9.0+): VPN por crypto map (policy-based), com os mesmos seletores LAN ↔ LAN dos
   // demais fabricantes. Com AES-GCM, o integrity do IKEv2 e do ESP fica "null" (o GCM já autentica).
-  function asa({ site, peer, L, P, psk }) {
+  function asa({ site, peer, L, P, psk, wan, lan }) {
     const map = "crypto map OUTSIDE-MAP 10";
     return {
       system: `hostname FW-SITE-${site}`,
-      interfaces: `interface GigabitEthernet0/0
+      interfaces: `interface ${wan}
  nameif outside
  security-level 0
  ip address ${L.wan.ip} ${L.wan.mask}
  no shutdown
-interface GigabitEthernet0/1
+interface ${lan}
  nameif inside
  security-level 100
  ip address ${L.lan.ip} ${L.lan.mask}
@@ -402,7 +405,7 @@ object network LAN-SITE-${site}
     srx: { build: srx, wan: "ge-0/0/0", lan: "ge-0/0/1" },
     fortigate: { build: fortigate, wan: "wan1", lan: "internal" },
     paloalto: { build: paloalto, wan: "ethernet1/1", lan: "ethernet1/2" },
-    asa: { build: asa, wan: "GigabitEthernet0/0 (outside)", lan: "GigabitEthernet0/1 (inside)" },
+    asa: { build: asa, wan: "GigabitEthernet0/0", lan: "GigabitEthernet0/1" },
   };
   const vendorLabel = (v) => tool.querySelector(`.fw-item[data-vendor="${v}"]`).dataset.label;
 
@@ -448,6 +451,10 @@ object network LAN-SITE-${site}
   function setSlot(site, vendor) {
     slots[site] = vendor;
     renderSlot(site);
+    // Campos de interface vazios usam o padrão do fabricante, mostrado como placeholder.
+    const S = site.toUpperCase();
+    $(`fwIfWan${S}`).placeholder = vendor ? VENDORS[vendor].wan : msg.msgIfDefault;
+    $(`fwIfLan${S}`).placeholder = vendor ? VENDORS[vendor].lan : msg.msgIfDefault;
     markChanged();
   }
 
@@ -541,7 +548,21 @@ object network LAN-SITE-${site}
     const lan = parseIface(lanIn.value);
     if (!lan) return invalid(lanIn);
     if (sameNet(lan.raw, wan.raw)) return fail(lanIn, msg.msgLanWan.replace("{site}", `Site ${S}`));
-    return { wan, gw: toIp(gw), lan, inputs: { wanIn, lanIn } };
+
+    // Nome da interface física, sem espaços nem subinterface/unidade (o gerador acrescenta a
+    // unidade .0 no Junos); vazio = padrão do fabricante.
+    const ifaces = {};
+    for (const [key, input] of [["wan", $(`fwIfWan${S}`)], ["lan", $(`fwIfLan${S}`)]]) {
+      const name = input.value.trim();
+      if (name && !/^[A-Za-z][A-Za-z0-9/_:-]{0,39}$/.test(name)) {
+        return fail(input, msg.msgIfInvalid.replace("{field}", input.dataset.name));
+      }
+      ifaces[key] = name || VENDORS[slots[site]][key];
+    }
+    if (ifaces.wan.toLowerCase() === ifaces.lan.toLowerCase()) {
+      return fail($(`fwIfLan${S}`), msg.msgIfSame.replace("{site}", `Site ${S}`));
+    }
+    return { wan, gw: toIp(gw), lan, ifaces, inputs: { wanIn, lanIn } };
   }
 
   // Ordem de aplicação, comum aos quatro fabricantes (no FortiOS a interface do túnel só existe
@@ -614,10 +635,11 @@ object network LAN-SITE-${site}
     Object.entries(sites).forEach(([site, { L, P, peer }]) => {
       const S = site.toUpperCase();
       const v = VENDORS[slots[site]];
-      configs[site] = v.build({ site: S, peer: peer.toUpperCase(), L, P, psk });
+      const { wan, lan } = L.ifaces;
+      configs[site] = v.build({ site: S, peer: peer.toUpperCase(), L, P, psk, wan, lan });
       labels[site] = `Site ${S} · ${vendorLabel(slots[site])}`;
       $(`fwTitle${S}`).textContent = labels[site];
-      $(`fwNote${S}`).textContent = msg.msgIfaces.replace("{wan}", v.wan).replace("{lan}", v.lan);
+      $(`fwNote${S}`).textContent = msg.msgIfaces.replace("{wan}", wan).replace("{lan}", lan);
     });
     renderBlocks(configs, labels);
 

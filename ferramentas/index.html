@@ -98,7 +98,10 @@
            data-msg-overlap="As LANs dos dois sites não podem se sobrepor."
            data-msg-psk="A chave pré-compartilhada deve ter de 20 a 64 caracteres: letras, números ou !@#$%&amp;*_+=.,:-"
            data-msg-ok="Configurações geradas, separadas em blocos na ordem de aplicação. Revise-as antes de aplicar nos equipamentos."
-           data-msg-ifaces="Interfaces — WAN: {wan} · LAN: {lan} (ajuste se necessário)">
+           data-msg-if-default="padrão do fabricante"
+           data-msg-if-invalid="Nome de interface inválido: {field}. Use o nome da interface física, sem espaços nem subinterface (ex.: ge-0/0/2, port3, ethernet1/3)."
+           data-msg-if-same="As interfaces WAN e LAN do {site} precisam ser diferentes."
+           data-msg-ifaces="Interfaces — WAN: {wan} · LAN: {lan}">
         <h3>Firewall Multivendor Configurator</h3>
         <p class="tool-intro">
           Monte uma VPN IPsec site-to-site entre dois sites: arraste um firewall para cada site,
@@ -121,7 +124,8 @@
           </button>
         </div>
         <p class="tool-hint">
-          Arraste um firewall até o site (ou toque no firewall e depois no site).
+          Arraste um firewall até o site (ou toque no firewall e depois no site). Os nomes das interfaces
+          WAN e LAN são opcionais: se ficarem vazios, é usado o padrão do fabricante.
         </p>
 
         <div class="topology">
@@ -136,6 +140,9 @@
               <label>Gateway do ISP
                 <input id="fwGwA" value="203.0.113.1" data-name="gateway do ISP A" spellcheck="false" autocomplete="off" />
               </label>
+              <label>Interface WAN do firewall
+                <input id="fwIfWanA" placeholder="padrão do fabricante" data-name="interface WAN do Firewall A" spellcheck="false" autocomplete="off" />
+              </label>
             </div>
             <div id="fwSlotA" class="node fw-slot" data-name="Firewall A" role="button" tabindex="0" aria-label="Firewall A">
               <span class="fw-slot-empty"><strong>Firewall A</strong><br />Solte o firewall aqui</span>
@@ -145,6 +152,9 @@
               <strong>LAN A</strong>
               <label>IP do firewall na LAN
                 <input id="fwLanA" value="10.1.0.1/24" data-name="IP da LAN A" spellcheck="false" autocomplete="off" />
+              </label>
+              <label>Interface LAN do firewall
+                <input id="fwIfLanA" placeholder="padrão do fabricante" data-name="interface LAN do Firewall A" spellcheck="false" autocomplete="off" />
               </label>
             </div>
           </div>
@@ -166,6 +176,9 @@
               <label>Gateway do ISP
                 <input id="fwGwB" value="198.51.100.1" data-name="gateway do ISP B" spellcheck="false" autocomplete="off" />
               </label>
+              <label>Interface WAN do firewall
+                <input id="fwIfWanB" placeholder="padrão do fabricante" data-name="interface WAN do Firewall B" spellcheck="false" autocomplete="off" />
+              </label>
             </div>
             <div id="fwSlotB" class="node fw-slot" data-name="Firewall B" role="button" tabindex="0" aria-label="Firewall B">
               <span class="fw-slot-empty"><strong>Firewall B</strong><br />Solte o firewall aqui</span>
@@ -175,6 +188,9 @@
               <strong>LAN B</strong>
               <label>IP do firewall na LAN
                 <input id="fwLanB" value="10.2.0.1/24" data-name="IP da LAN B" spellcheck="false" autocomplete="off" />
+              </label>
+              <label>Interface LAN do firewall
+                <input id="fwIfLanB" placeholder="padrão do fabricante" data-name="interface LAN do Firewall B" spellcheck="false" autocomplete="off" />
               </label>
             </div>
           </div>
@@ -216,6 +232,6 @@
   </footer>
 
   <script src="../js/script.js?v=5"></script>
-  <script src="../js/fwconfig.js?v=5"></script>
+  <script src="../js/fwconfig.js?v=6"></script>
 </body>
 </html>
