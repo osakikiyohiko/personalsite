@@ -1,14 +1,14 @@
-// Firewall Multivendor Configurator (#ferramentas): o usuário arrasta um firewall (Juniper SRX,
-// FortiGate ou Palo Alto) para o Site A e para o Site B, informa os IPs públicos (ISP) e as LANs,
+// Firewall Multivendor Configurator (ferramentas/): o usuário arrasta um firewall (Juniper SRX,
+// FortiGate, Palo Alto ou Cisco ASA) para o Site A e para o Site B, informa os IPs públicos (ISP) e as LANs,
 // e "Deploy" gera a configuração de cada lado, separada em blocos com título e descrição
 // (interfaces, zonas, roteamento, fase 1, fase 2, políticas, NAT…), com a VPN IPsec site-to-site
 // entre os dois sites. Os textos da interface vêm dos atributos data-msg-*
 // de #fwTool, traduzidos em cada página.
 //
-// Criptografia do túnel: a mais forte suportada pelos três fabricantes, alinhada à suíte CNSA
+// Criptografia do túnel: a mais forte suportada pelos quatro fabricantes, alinhada à suíte CNSA
 // (NSA) e às recomendações do NIST — IKEv2; IKE com AES-256-GCM + PRF SHA-384 e ECDH P-384
 // (grupo 20); ESP com AES-256-GCM (AEAD, sem HMAC separado) e PFS no grupo 20; SA do IKE de 8 h e
-// do IPsec de 1 h; DPD ativo. Exige FortiOS 6.2+, PAN-OS 10.0+ e Junos 15.1X49+ (SRX).
+// do IPsec de 1 h; DPD ativo. Exige FortiOS 6.2+, PAN-OS 10.0+, Junos 15.1X49+ (SRX) e ASA 9.0+.
 (() => {
   const tool = document.getElementById("fwTool");
   if (!tool) return;
@@ -74,10 +74,10 @@
   const BLOCK_TEXT = {
     pt: {
       system: ["Sistema", "Nome do equipamento (hostname), que identifica o firewall em logs e na gerência."],
-      interfaces: ["Interfaces", "Endereços da WAN (IP público do ISP) e da LAN, além da interface de túnel usada pela VPN."],
+      interfaces: ["Interfaces", "Endereços da WAN (IP público do ISP) e da LAN, além da interface de túnel nas VPNs baseadas em rota."],
       zones: ["Zonas de segurança", "Agrupa as interfaces em zonas (untrust, trust e vpn), usadas como origem e destino das políticas."],
       addresses: ["Objetos de endereço", "Dá nome às LANs dos dois sites, para uso nas políticas de segurança."],
-      routing: ["Roteamento", "Rota default para o gateway do ISP e rota para a LAN remota através do túnel IPsec."],
+      routing: ["Roteamento", "Rota default para o gateway do ISP e, nas VPNs baseadas em rota, rota para a LAN remota pelo túnel IPsec (no ASA, a crypto map cifra o tráfego que segue a rota default)."],
       phase1: ["VPN — Fase 1 (IKE)", "Estabelece o canal seguro entre os firewalls: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384 (grupo 20), chave pré-compartilhada e DPD."],
       phase2: ["VPN — Fase 2 (IPsec)", "Define como o tráfego entre as LANs é cifrado: ESP com AES-256-GCM, PFS no grupo 20 e seletores de tráfego LAN local ↔ LAN remota."],
       policies: ["Políticas de segurança", "Libera o tráfego entre as LANs pela VPN, nos dois sentidos, e a saída da LAN para a Internet."],
@@ -85,10 +85,10 @@
     },
     en: {
       system: ["System", "Device name (hostname), which identifies the firewall in logs and management."],
-      interfaces: ["Interfaces", "WAN (ISP public IP) and LAN addresses, plus the tunnel interface used by the VPN."],
+      interfaces: ["Interfaces", "WAN (ISP public IP) and LAN addresses, plus the tunnel interface on route-based VPNs."],
       zones: ["Security zones", "Groups the interfaces into zones (untrust, trust and vpn), used as source and destination in policies."],
       addresses: ["Address objects", "Names the LANs of both sites for use in the security policies."],
-      routing: ["Routing", "Default route to the ISP gateway and a route to the remote LAN through the IPsec tunnel."],
+      routing: ["Routing", "Default route to the ISP gateway and, on route-based VPNs, a route to the remote LAN through the IPsec tunnel (on the ASA, the crypto map encrypts traffic following the default route)."],
       phase1: ["VPN — Phase 1 (IKE)", "Sets up the secure channel between the firewalls: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384 (group 20), pre-shared key and DPD."],
       phase2: ["VPN — Phase 2 (IPsec)", "Defines how traffic between the LANs is encrypted: ESP with AES-256-GCM, PFS with group 20 and local LAN ↔ remote LAN traffic selectors."],
       policies: ["Security policies", "Allows traffic between the LANs over the VPN in both directions, and LAN access to the Internet."],
@@ -234,7 +234,6 @@ end`,
         set dst-subnet ${P.lan.net} ${P.lan.mask}
     next
 end`,
-      // No FortiOS a interface de túnel só existe depois da fase 1, por isso as rotas vêm depois dela.
       routing: `config router static
     edit 0
         set gateway ${L.gw}
@@ -338,10 +337,72 @@ set rulebase nat rules SNAT-INTERNET source-translation dynamic-ip-and-port inte
     };
   }
 
+  // Cisco ASA (9.0+): VPN por crypto map (policy-based), com os mesmos seletores LAN ↔ LAN dos
+  // demais fabricantes. Com AES-GCM, o integrity do IKEv2 e do ESP fica "null" (o GCM já autentica).
+  function asa({ site, peer, L, P, psk }) {
+    const map = "crypto map OUTSIDE-MAP 10";
+    return {
+      system: `hostname FW-SITE-${site}`,
+      interfaces: `interface GigabitEthernet0/0
+ nameif outside
+ security-level 0
+ ip address ${L.wan.ip} ${L.wan.mask}
+ no shutdown
+interface GigabitEthernet0/1
+ nameif inside
+ security-level 100
+ ip address ${L.lan.ip} ${L.lan.mask}
+ no shutdown`,
+      addresses: `object network LAN-SITE-${site}
+ subnet ${L.lan.net} ${L.lan.mask}
+object network LAN-SITE-${peer}
+ subnet ${P.lan.net} ${P.lan.mask}`,
+      phase1: `crypto ikev2 policy 10
+ encryption aes-gcm-256
+ integrity null
+ group 20
+ prf sha384
+ lifetime seconds 28800
+crypto ikev2 enable outside
+tunnel-group ${P.wan.ip} type ipsec-l2l
+tunnel-group ${P.wan.ip} ipsec-attributes
+ ikev2 remote-authentication pre-shared-key ${psk}
+ ikev2 local-authentication pre-shared-key ${psk}
+ isakmp keepalive threshold 10 retry 2`,
+      phase2: `access-list VPN-SITE-${peer} extended permit ip object LAN-SITE-${site} object LAN-SITE-${peer}
+crypto ipsec ikev2 ipsec-proposal AES256GCM
+ protocol esp encryption aes-gcm-256
+ protocol esp integrity null
+${map} match address VPN-SITE-${peer}
+${map} set peer ${P.wan.ip}
+${map} set ikev2 ipsec-proposal AES256GCM
+${map} set pfs group20
+${map} set security-association lifetime seconds 3600
+crypto map OUTSIDE-MAP interface outside
+sysopt connection tcpmss 1350`,
+      routing: `route outside 0.0.0.0 0.0.0.0 ${L.gw}`,
+      // Tráfego vindo da VPN é filtrado pelo vpn-filter (origem = LAN remota, destino = LAN local).
+      policies: `access-list INSIDE-IN extended permit ip object LAN-SITE-${site} object LAN-SITE-${peer}
+access-list INSIDE-IN extended permit ip object LAN-SITE-${site} any
+access-group INSIDE-IN in interface inside
+access-list VPN-FILTER-SITE-${peer} extended permit ip object LAN-SITE-${peer} object LAN-SITE-${site}
+group-policy GP-SITE-${peer} internal
+group-policy GP-SITE-${peer} attributes
+ vpn-tunnel-protocol ikev2
+ vpn-filter value VPN-FILTER-SITE-${peer}
+tunnel-group ${P.wan.ip} general-attributes
+ default-group-policy GP-SITE-${peer}`,
+      nat: `nat (inside,outside) source static LAN-SITE-${site} LAN-SITE-${site} destination static LAN-SITE-${peer} LAN-SITE-${peer} no-proxy-arp route-lookup
+object network LAN-SITE-${site}
+ nat (inside,outside) dynamic interface`,
+    };
+  }
+
   const VENDORS = {
     srx: { build: srx, wan: "ge-0/0/0", lan: "ge-0/0/1" },
     fortigate: { build: fortigate, wan: "wan1", lan: "internal" },
     paloalto: { build: paloalto, wan: "ethernet1/1", lan: "ethernet1/2" },
+    asa: { build: asa, wan: "GigabitEthernet0/0 (outside)", lan: "GigabitEthernet0/1 (inside)" },
   };
   const vendorLabel = (v) => tool.querySelector(`.fw-item[data-vendor="${v}"]`).dataset.label;
 
@@ -483,32 +544,50 @@ set rulebase nat rules SNAT-INTERNET source-translation dynamic-ip-and-port inte
     return { wan, gw: toIp(gw), lan, inputs: { wanIn, lanIn } };
   }
 
-  // Um bloco por etapa da configuração: título numerado, descrição curta, código e botão de copiar.
-  function renderBlocks(container, blocks) {
-    container.replaceChildren(
-      ...Object.entries(blocks).map(([key, text], i) => {
+  // Ordem de aplicação, comum aos quatro fabricantes (no FortiOS a interface do túnel só existe
+  // depois da fase 1, por isso o roteamento vem depois das fases da VPN).
+  const BLOCK_ORDER = ["system", "interfaces", "zones", "addresses", "phase1", "phase2", "routing", "policies", "nat"];
+
+  const el = (tag, className, text) => {
+    const node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  };
+
+  // Uma linha por bloco: título numerado e descrição curta, com a configuração do Site A e a do
+  // Site B lado a lado (cada uma com botão de copiar). Bloco que um fabricante não usa (ex.: zonas
+  // e NAT no FortiGate) aparece como "não se aplica".
+  function renderBlocks(configs, labels) {
+    const keys = BLOCK_ORDER.filter((key) => configs.a[key] || configs.b[key]);
+    $("fwBlocks").replaceChildren(
+      ...keys.map((key, i) => {
         const [title, desc] = blockText[key];
-        const block = document.createElement("section");
-        block.className = "fw-block";
-        const head = document.createElement("div");
-        head.className = "fw-block-head";
-        const h = document.createElement("h5");
-        h.textContent = `${i + 1}. ${title}`;
-        const copy = document.createElement("button");
-        copy.type = "button";
-        copy.className = "btn-secondary btn-copy btn-copy-block";
-        copy.textContent = msg.msgCopyBlock;
-        copy.setAttribute("aria-label", `${msg.msgCopyBlock}: ${title}`);
-        head.append(h, copy);
-        const p = document.createElement("p");
-        p.className = "fw-block-desc";
-        p.textContent = desc;
-        const pre = document.createElement("pre");
-        const code = document.createElement("code");
-        code.textContent = text;
-        pre.appendChild(code);
-        block.append(head, p, pre);
-        return block;
+        const row = el("section", "fw-row");
+        const head = el("div", "fw-row-head");
+        head.append(el("h5", "", `${i + 1}. ${title}`), el("p", "fw-block-desc", desc));
+        const cols = el("div", "fw-row-cols");
+        ["a", "b"].forEach((site) => {
+          const cell = el("div", "fw-cell");
+          cell.dataset.site = site;
+          const cellHead = el("div", "fw-cell-head");
+          cellHead.appendChild(el("span", "fw-cell-site", labels[site]));
+          const text = configs[site][key];
+          if (text) {
+            const copy = el("button", "btn-secondary btn-copy btn-copy-block", msg.msgCopyBlock);
+            copy.type = "button";
+            copy.setAttribute("aria-label", `${msg.msgCopyBlock}: ${title} · ${labels[site]}`);
+            cellHead.appendChild(copy);
+            const pre = el("pre");
+            pre.appendChild(el("code", "", text));
+            cell.append(cellHead, pre);
+          } else {
+            cell.append(cellHead, el("p", "fw-na", msg.msgNa));
+          }
+          cols.appendChild(cell);
+        });
+        row.append(head, cols);
+        return row;
       })
     );
   }
@@ -530,13 +609,17 @@ set rulebase nat rules SNAT-INTERNET source-translation dynamic-ip-and-port inte
     if (!/^[A-Za-z0-9!@#$%&*_+=.,:-]{20,64}$/.test(psk)) return fail(pskIn, msg.msgPsk);
 
     const sites = { a: { L: A, P: B, peer: "b" }, b: { L: B, P: A, peer: "a" } };
+    const configs = {};
+    const labels = {};
     Object.entries(sites).forEach(([site, { L, P, peer }]) => {
       const S = site.toUpperCase();
       const v = VENDORS[slots[site]];
-      renderBlocks($(`fwCfg${S}`), v.build({ site: S, peer: peer.toUpperCase(), L, P, psk }));
-      $(`fwTitle${S}`).textContent = `Site ${S} · ${vendorLabel(slots[site])}`;
+      configs[site] = v.build({ site: S, peer: peer.toUpperCase(), L, P, psk });
+      labels[site] = `Site ${S} · ${vendorLabel(slots[site])}`;
+      $(`fwTitle${S}`).textContent = labels[site];
       $(`fwNote${S}`).textContent = msg.msgIfaces.replace("{wan}", v.wan).replace("{lan}", v.lan);
     });
+    renderBlocks(configs, labels);
 
     const output = $("fwOutput");
     output.hidden = false;
@@ -567,12 +650,14 @@ set rulebase nat rules SNAT-INTERNET source-translation dynamic-ip-and-port inte
     }
   }
 
-  // "Copiar configuração" copia todos os blocos do site; "Copiar bloco", só o bloco dele.
+  // "Copiar configuração do Site X" copia todos os blocos daquele site; "Copiar bloco", só um.
   tool.addEventListener("click", async (e) => {
     const btn = e.target.closest(".btn-copy");
     if (!btn) return;
-    const scope = btn.dataset.target ? $(btn.dataset.target) : btn.closest(".fw-block");
-    const text = [...scope.querySelectorAll("code")].map((code) => code.textContent).join("\n\n");
+    const codes = btn.dataset.site
+      ? $("fwBlocks").querySelectorAll(`.fw-cell[data-site="${btn.dataset.site}"] code`)
+      : btn.closest(".fw-cell").querySelectorAll("code");
+    const text = [...codes].map((code) => code.textContent).join("\n\n");
     btn.dataset.label ??= btn.textContent;
     try {
       await copyText(text);

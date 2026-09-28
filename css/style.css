@@ -354,6 +354,11 @@ footer {
 
 /* Ferramentas: Firewall Multivendor Configurator */
 
+/* Página da ferramenta (ferramentas/): mais larga, para comparar os dois sites lado a lado. */
+.section-wide {
+  max-width: 1280px;
+}
+
 .icon-defs {
   position: absolute;
   width: 0;
@@ -443,6 +448,7 @@ button.btn-primary {
 .v-srx .fw-icon { color: #2f6b1f; }
 .v-fortigate .fw-icon { color: #da291c; }
 .v-paloalto .fw-icon { color: #fa582d; }
+.v-asa .fw-icon { color: #049fd9; }
 
 .topology {
   display: grid;
@@ -641,9 +647,6 @@ button.btn-primary {
 }
 
 .fw-output {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 2rem;
   scroll-margin-top: 5rem;
 }
 
@@ -651,24 +654,29 @@ button.btn-primary {
   display: none;
 }
 
-.fw-config {
-  min-width: 0;
+.fw-compare-head,
+.fw-row-cols {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
 }
 
-.fw-config-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
+.fw-compare-head {
+  margin-bottom: 1rem;
 }
 
-.fw-config-head h4 {
+.fw-site-head {
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.fw-site-head h4 {
   margin: 0;
 }
 
 .fw-note {
-  margin: 0.4rem 0 0.75rem;
+  margin: 0.3rem 0 0.6rem;
   font-size: 0.85rem;
 }
 
@@ -678,29 +686,16 @@ button.btn-primary {
   gap: 1rem;
 }
 
-.fw-block {
+.fw-row {
   padding: 0.75rem;
   background: var(--color-bg-alt);
   border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
-.fw-block-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.fw-block-head h5 {
+.fw-row-head h5 {
   margin: 0;
   font-size: 0.95rem;
-}
-
-.btn-copy-block {
-  padding: 0.2rem 0.6rem;
-  font-size: 0.8rem;
-  white-space: nowrap;
 }
 
 .fw-block-desc {
@@ -710,12 +705,46 @@ button.btn-primary {
   color: var(--color-text-muted);
 }
 
-.fw-block pre {
-  margin: 0;
-  max-height: 320px;
-  overflow: auto;
-  padding: 1rem;
+.fw-cell {
+  min-width: 0;
+}
+
+.fw-cell-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.fw-cell-site {
   font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.btn-copy-block {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.fw-na {
+  margin: 0;
+  padding: 1rem;
+  font-size: 0.85rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+}
+
+.fw-cell pre {
+  margin: 0;
+  max-height: 360px;
+  overflow: auto;
+  padding: 0.75rem;
+  font-size: 0.78rem;
   line-height: 1.45;
   color: #e2e8f0;
   background: #0f172a;
@@ -733,5 +762,10 @@ button.btn-primary {
 
   .wan-link {
     margin-top: 0;
+  }
+
+  .fw-compare-head,
+  .fw-row-cols {
+    grid-template-columns: 1fr;
   }
 }

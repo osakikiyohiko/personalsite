@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firewall Multivendor Configurator · André Osaki</title>
+  <meta name="description" content="Generate site-to-site IPsec VPN configurations for Juniper SRX, FortiGate, Palo Alto and Cisco ASA from an interactive topology." />
+  <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/ferramentas/" />
+  <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/ferramentas/" />
+  <link rel="icon" type="image/svg+xml" href="../../img/favicon.svg" />
+  <link rel="stylesheet" href="../../css/style.css?v=8" />
+  <script>
+    // Aplica o bloqueio antes da primeira pintura, para o conteúdo não "piscar" sem blur. Só no
+    // domínio publicado: aberto localmente (file://, localhost), o Turnstile e o Worker recusam a
+    // origem e o popup travaria o site.
+    if (location.hostname === "osakikiyohiko.github.io") {
+      try {
+        if (!(Number(localStorage.getItem("personalsite:humanVerifiedUntil")) > Date.now())) throw 0;
+        if (!localStorage.getItem("personalsite:links")) throw 0;
+      } catch (e) {
+        document.documentElement.classList.add("gated");
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="humanGate" class="gate" role="dialog" aria-modal="true" aria-labelledby="gateTitle"
+       data-sitekey="0x4AAAAAAFBdflfGJpBXMsuQ" data-endpoint="https://personalsite-contato.andre-osaki.workers.dev"
+       data-msg-loading="Verifying…"
+       data-msg-error="Verification failed. Please reload the page and try again.">
+    <div class="gate-box">
+      <h2 id="gateTitle">Security check</h2>
+      <p>Please confirm you are not a robot to access the site.</p>
+      <div id="turnstileWidget"></div>
+      <p id="gateStatus" class="gate-status" role="status"></p>
+    </div>
+  </div>
+  <header class="navbar">
+    <div class="nav-container">
+      <a href="../" class="logo">André Osaki</a>
+      <nav>
+        <ul id="navLinks">
+          <li><a href="../#inicio">Home</a></li>
+          <li><a href="../#sobre">About</a></li>
+          <li><a href="../#habilidades">Skills</a></li>
+          <li><a href="../#experiencia">Experience</a></li>
+          <li><a href="../#projetos">Articles</a></li>
+          <li><a href="./" aria-current="page">Tools</a></li>
+          <li><a href="../#contato">Contact</a></li>
+        </ul>
+      </nav>
+      <div class="nav-actions">
+        <div class="lang-switch">
+          <a href="../../ferramentas/" lang="pt-BR" hreflang="pt-BR" title="Ver em português"><img src="../../img/flag-br.svg" alt="Português" class="flag" /></a>
+          <a href="./" lang="en" hreflang="en" aria-current="page" title="English"><img src="../../img/flag-us.svg" alt="English" class="flag" /></a>
+        </div>
+        <button id="menuToggle" class="menu-toggle" aria-label="Open menu" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="ferramentas" class="section section-wide">
+      <h1>Tools</h1>
+      <svg class="icon-defs" aria-hidden="true" focusable="false">
+        <symbol id="icon-fw" viewBox="0 0 48 36">
+          <rect x="1" y="1" width="46" height="34" rx="4" fill="currentColor" />
+          <path d="M1 12h46M1 24h46M16 1v11M32 1v11M8 12v12M24 12v12M40 12v12M16 24v11M32 24v11" stroke="#fff" stroke-width="2" />
+        </symbol>
+        <symbol id="icon-isp" viewBox="0 0 48 36">
+          <path d="M4 11v14c0 4.4 9 8 20 8s20-3.6 20-8V11" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <ellipse cx="24" cy="11" rx="20" ry="8" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <path d="M14 11h8m-3-3 3 3-3 3M34 11h-8m3-3-3 3 3 3" fill="none" stroke="currentColor" stroke-width="2" />
+        </symbol>
+        <symbol id="icon-lan" viewBox="0 0 48 36">
+          <rect x="2" y="8" width="44" height="20" rx="3" fill="none" stroke="currentColor" stroke-width="2.5" />
+          <path d="M9 18h4M17 18h4M25 18h4M33 18h4" stroke="currentColor" stroke-width="4" />
+        </symbol>
+        <symbol id="icon-cloud" viewBox="0 0 64 40">
+          <path d="M16 36h34a11 11 0 0 0 1-22A15 15 0 0 0 23 10a11 11 0 0 0-7 26z" fill="none" stroke="currentColor" stroke-width="2.5" />
+        </symbol>
+      </svg>
+
+      <div id="fwTool" class="tool"
+           data-msg-copy="Copy configuration"
+           data-msg-copied="Copied!"
+           data-msg-copy-block="Copy block"
+           data-msg-na="Not applicable to this vendor."
+           data-msg-copy-error="Could not copy"
+           data-msg-remove="Remove firewall"
+           data-msg-need-fw="Drag one firewall to Site A and another to Site B."
+           data-msg-invalid="Invalid value: {field}."
+           data-msg-gw="The {site} gateway must be in the same subnet as the public IP."
+           data-msg-lan-wan="The {site} LAN cannot be in the same subnet as the public IP."
+           data-msg-same-ip="The public IPs of the two sites must be different."
+           data-msg-overlap="The LANs of the two sites cannot overlap."
+           data-msg-psk="The pre-shared key must have 20 to 64 characters: letters, digits or !@#$%&amp;*_+=.,:-"
+           data-msg-ok="Configurations generated, split into blocks in the order they should be applied. Review them before applying to the devices."
+           data-msg-ifaces="Interfaces — WAN: {wan} · LAN: {lan} (adjust if needed)">
+        <h3>Firewall Multivendor Configurator</h3>
+        <p class="tool-intro">
+          Build a site-to-site IPsec VPN between two sites: drag a firewall to each site, enter
+          the public IPs and LANs, and click <strong>Deploy</strong> to generate the configuration
+          for each side — each end can use a different vendor.
+        </p>
+
+        <div class="fw-palette" role="group" aria-label="Firewalls">
+          <button type="button" class="fw-item v-srx" draggable="true" data-vendor="srx" data-label="Juniper SRX" aria-pressed="false">
+            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>Juniper SRX
+          </button>
+          <button type="button" class="fw-item v-fortigate" draggable="true" data-vendor="fortigate" data-label="FortiGate" aria-pressed="false">
+            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>FortiGate
+          </button>
+          <button type="button" class="fw-item v-paloalto" draggable="true" data-vendor="paloalto" data-label="Palo Alto" aria-pressed="false">
+            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>Palo Alto
+          </button>
+          <button type="button" class="fw-item v-asa" draggable="true" data-vendor="asa" data-label="Cisco ASA" aria-pressed="false">
+            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>Cisco ASA
+          </button>
+        </div>
+        <p class="tool-hint">
+          Drag a firewall onto a site (or tap the firewall and then the site).
+        </p>
+
+        <div class="topology">
+          <div class="site">
+            <h4>Site A</h4>
+            <div class="node">
+              <svg class="node-icon" aria-hidden="true"><use href="#icon-isp" /></svg>
+              <strong>ISP A</strong>
+              <label>Public IP (WAN)
+                <input id="fwWanA" value="203.0.113.2/30" data-name="Site A public IP" spellcheck="false" autocomplete="off" />
+              </label>
+              <label>ISP gateway
+                <input id="fwGwA" value="203.0.113.1" data-name="ISP A gateway" spellcheck="false" autocomplete="off" />
+              </label>
+            </div>
+            <div id="fwSlotA" class="node fw-slot" data-name="Firewall A" role="button" tabindex="0" aria-label="Firewall A">
+              <span class="fw-slot-empty"><strong>Firewall A</strong><br />Drop the firewall here</span>
+            </div>
+            <div class="node">
+              <svg class="node-icon" aria-hidden="true"><use href="#icon-lan" /></svg>
+              <strong>LAN A</strong>
+              <label>Firewall LAN IP
+                <input id="fwLanA" value="10.1.0.1/24" data-name="LAN A IP" spellcheck="false" autocomplete="off" />
+              </label>
+            </div>
+          </div>
+
+          <div class="wan-link">
+            <svg class="wan-cloud" aria-hidden="true"><use href="#icon-cloud" /></svg>
+            <strong>Internet</strong>
+            <span id="fwTunnel" class="tunnel">IPsec IKEv2</span>
+          </div>
+
+          <div class="site">
+            <h4>Site B</h4>
+            <div class="node">
+              <svg class="node-icon" aria-hidden="true"><use href="#icon-isp" /></svg>
+              <strong>ISP B</strong>
+              <label>Public IP (WAN)
+                <input id="fwWanB" value="198.51.100.2/30" data-name="Site B public IP" spellcheck="false" autocomplete="off" />
+              </label>
+              <label>ISP gateway
+                <input id="fwGwB" value="198.51.100.1" data-name="ISP B gateway" spellcheck="false" autocomplete="off" />
+              </label>
+            </div>
+            <div id="fwSlotB" class="node fw-slot" data-name="Firewall B" role="button" tabindex="0" aria-label="Firewall B">
+              <span class="fw-slot-empty"><strong>Firewall B</strong><br />Drop the firewall here</span>
+            </div>
+            <div class="node">
+              <svg class="node-icon" aria-hidden="true"><use href="#icon-lan" /></svg>
+              <strong>LAN B</strong>
+              <label>Firewall LAN IP
+                <input id="fwLanB" value="10.2.0.1/24" data-name="LAN B IP" spellcheck="false" autocomplete="off" />
+              </label>
+            </div>
+          </div>
+        </div>
+
+        <div class="tool-options">
+          <label>Pre-shared key (PSK)
+            <input id="fwPsk" spellcheck="false" autocomplete="off" />
+          </label>
+          <button type="button" id="fwPskGen" class="btn-secondary">Generate new</button>
+          <p class="tool-crypto">IKEv2 · AES-256-GCM · PRF SHA-384 · ECDH P-384 (DH 20) · PFS — CNSA suite,
+            the strongest supported by all four vendors (FortiOS 6.2+, PAN-OS 10.0+, Junos 15.1X49+, ASA 9.0+).</p>
+        </div>
+
+        <button type="button" id="fwDeploy" class="btn-primary">Deploy</button>
+        <p id="fwStatus" class="tool-status" role="status"></p>
+
+        <div id="fwOutput" class="fw-output" hidden>
+          <div class="fw-compare-head">
+            <div class="fw-site-head">
+              <h4 id="fwTitleA">Site A</h4>
+              <p id="fwNoteA" class="fw-note"></p>
+              <button type="button" class="btn-secondary btn-copy" data-site="a">Copy Site A configuration</button>
+            </div>
+            <div class="fw-site-head">
+              <h4 id="fwTitleB">Site B</h4>
+              <p id="fwNoteB" class="fw-note"></p>
+              <button type="button" class="btn-secondary btn-copy" data-site="b">Copy Site B configuration</button>
+            </div>
+          </div>
+          <div id="fwBlocks" class="fw-blocks"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <p>&copy; <span id="year"></span> André Osaki</p>
+  </footer>
+
+  <script src="../../js/script.js?v=5"></script>
+  <script src="../../js/fwconfig.js?v=5"></script>
+</body>
+</html>

@@ -30,7 +30,13 @@ qualquer `git push` para `main` já republica o site.
 ## Estrutura
 
 - `index.html` — página principal (português), dividida em seções por `id` (`#inicio`, `#sobre`,
-  `#habilidades`, `#experiencia`, `#projetos`, `#ferramentas`, `#contato`) referenciadas pelo menu de navegação.
+  `#habilidades`, `#experiencia`, `#projetos`, `#contato`) referenciadas pelo menu de navegação.
+  A aba "Ferramentas" do menu leva à página própria `ferramentas/`.
+- `ferramentas/index.html` e `en/ferramentas/index.html` — página da ferramenta "Firewall
+  Multivendor Configurator" (ver seção própria abaixo), fora do `index.html`. Reaproveitam o
+  cabeçalho (links do menu apontam para `../#secao`, aba atual com `aria-current="page"`), a
+  verificação `#humanGate` e o rodapé; assets com `../` (pt) ou `../../` (en). **Mudanças no
+  cabeçalho, no `<head>` ou na verificação precisam ser replicadas nas quatro páginas.**
 - `css/style.css` — todo o estilo, usando variáveis CSS em `:root` para cores e largura máxima do
   conteúdo. Breakpoint do menu mobile em `820px` (com a aba Ferramentas, os links não cabem
   abaixo disso; entre 821–900px o espaçamento do menu é reduzido); a topologia da ferramenta
@@ -60,20 +66,24 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=6`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=3`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=8`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=5`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Ferramentas: Firewall Multivendor Configurator
 
-Seção `#ferramentas` (aba "Ferramentas"/"Tools"), lógica em `js/fwconfig.js`. Topologia com
+Página `ferramentas/` (aba "Ferramentas"/"Tools"; em inglês `en/ferramentas/`), lógica em
+`js/fwconfig.js`. A página usa `.section-wide` (1280px) para a comparação lado a lado. Topologia com
 Site A e Site B (ISP com IP público/gateway, slot de firewall, LAN); o usuário arrasta (ou
-clica/toca, alternativa para celular) um firewall da paleta — Juniper SRX, FortiGate, Palo Alto —
+clica/toca, alternativa para celular) um firewall da paleta — Juniper SRX, FortiGate, Palo Alto, Cisco ASA —
 para cada slot, e **Deploy** valida os dados e gera a configuração de cada lado (interfaces, rota
-default, NAT de saída, políticas e VPN IPsec site-to-site com a suíte mais forte comum aos três fabricantes: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384/DH 20, PFS, DPD — ver comentário no topo do JS), com
-botão "Copiar configuração" em cada painel. Cada gerador devolve a configuração em blocos
-(`system`, `interfaces`, `zones`, `addresses`, `routing`, `phase1`, `phase2`, `policies`, `nat`),
-na ordem de aplicação, renderizados com título, descrição curta (dicionário `BLOCK_TEXT`, pt/en
-pelo `lang` da página) e botão "Copiar bloco". O SRX sai em comandos `set`. Os demais textos
+default, NAT de saída, políticas e VPN IPsec site-to-site com a suíte mais forte comum aos quatro fabricantes: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384/DH 20, PFS, DPD — ver comentário no topo do JS), com
+botões "Copiar configuração do Site A/B". Cada gerador devolve a configuração em blocos
+(`{ chave: texto }`), exibidos em linhas na ordem de `BLOCK_ORDER` (sistema, interfaces, zonas,
+objetos, fase 1, fase 2, roteamento, políticas, NAT — roteamento depois da VPN porque no FortiOS
+a interface do túnel só existe após a fase 1): cada linha tem título, descrição curta (dicionário
+`BLOCK_TEXT`, pt/en pelo `lang` da página) e as células do Site A e do Site B lado a lado, cada
+uma com botão "Copiar bloco"; bloco que o fabricante não usa aparece como "não se aplica". O SRX sai em comandos `set`; o Cisco ASA usa VPN por crypto map (policy-based, sem
+interface de túnel), com `vpn-filter` para o tráfego vindo da VPN e NAT de isenção para LAN ↔ LAN. Os demais textos
 dinâmicos vêm dos `data-msg-*` de `#fwTool`, traduzidos em cada página; os ícones são `<symbol>`
 SVG inline (genéricos, sem logos dos fabricantes). Os defaults usam faixas de documentação
 (203.0.113.0/24, 198.51.100.0/24). Tudo roda no navegador; nada é enviado a servidor.
