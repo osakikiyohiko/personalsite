@@ -60,18 +60,20 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=5`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=2`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=6`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=3`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Ferramentas: Firewall Multivendor Configurator
 
 Seção `#ferramentas` (aba "Ferramentas"/"Tools"), lógica em `js/fwconfig.js`. Topologia com
 Site A e Site B (ISP com IP público/gateway, slot de firewall, LAN); o usuário arrasta (ou
-clica/toca, alternativa para celular) um firewall da paleta — SRX, Juniper, FortiGate, Palo Alto —
+clica/toca, alternativa para celular) um firewall da paleta — Juniper SRX, FortiGate, Palo Alto —
 para cada slot, e **Deploy** valida os dados e gera a configuração de cada lado (interfaces, rota
-default, NAT de saída, políticas e VPN IPsec site-to-site com a suíte mais forte comum aos quatro fabricantes: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384/DH 20, PFS, DPD — ver comentário no topo do JS), com
-botão "Copiar configuração" em cada painel. SRX e Juniper saem da mesma lista de linhas Junos
-(`junosLines`): SRX em formato `set`, Juniper em formato hierárquico com chaves. Os textos
+default, NAT de saída, políticas e VPN IPsec site-to-site com a suíte mais forte comum aos três fabricantes: IKEv2, AES-256-GCM, PRF SHA-384, ECDH P-384/DH 20, PFS, DPD — ver comentário no topo do JS), com
+botão "Copiar configuração" em cada painel. Cada gerador devolve a configuração em blocos
+(`system`, `interfaces`, `zones`, `addresses`, `routing`, `phase1`, `phase2`, `policies`, `nat`),
+na ordem de aplicação, renderizados com título, descrição curta (dicionário `BLOCK_TEXT`, pt/en
+pelo `lang` da página) e botão "Copiar bloco". O SRX sai em comandos `set`. Os demais textos
 dinâmicos vêm dos `data-msg-*` de `#fwTool`, traduzidos em cada página; os ícones são `<symbol>`
 SVG inline (genéricos, sem logos dos fabricantes). Os defaults usam faixas de documentação
 (203.0.113.0/24, 198.51.100.0/24). Tudo roda no navegador; nada é enviado a servidor.

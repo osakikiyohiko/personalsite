@@ -441,7 +441,6 @@ button.btn-primary {
 }
 
 .v-srx .fw-icon { color: #2f6b1f; }
-.v-juniper .fw-icon { color: #84b135; }
 .v-fortigate .fw-icon { color: #da291c; }
 .v-paloalto .fw-icon { color: #fa582d; }
 
@@ -643,8 +642,8 @@ button.btn-primary {
 
 .fw-output {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: 1fr;
+  gap: 2rem;
   scroll-margin-top: 5rem;
 }
 
@@ -669,13 +668,51 @@ button.btn-primary {
 }
 
 .fw-note {
-  margin: 0.4rem 0;
+  margin: 0.4rem 0 0.75rem;
   font-size: 0.85rem;
 }
 
-.fw-config pre {
+.fw-blocks {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.fw-block {
+  padding: 0.75rem;
+  background: var(--color-bg-alt);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.fw-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.fw-block-head h5 {
   margin: 0;
-  max-height: 460px;
+  font-size: 0.95rem;
+}
+
+.btn-copy-block {
+  padding: 0.2rem 0.6rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.fw-block-desc {
+  margin: 0.3rem 0 0.6rem;
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--color-text-muted);
+}
+
+.fw-block pre {
+  margin: 0;
+  max-height: 320px;
   overflow: auto;
   padding: 1rem;
   font-size: 0.8rem;
@@ -696,9 +733,5 @@ button.btn-primary {
 
   .wan-link {
     margin-top: 0;
-  }
-
-  .fw-output {
-    grid-template-columns: 1fr;
   }
 }

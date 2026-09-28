@@ -8,7 +8,7 @@
   <link rel="alternate" hreflang="pt-BR" href="https://osakikiyohiko.github.io/personalsite/" />
   <link rel="alternate" hreflang="en" href="https://osakikiyohiko.github.io/personalsite/en/" />
   <link rel="icon" type="image/svg+xml" href="../img/favicon.svg" />
-  <link rel="stylesheet" href="../css/style.css?v=5" />
+  <link rel="stylesheet" href="../css/style.css?v=6" />
   <script>
     // Aplica o bloqueio antes da primeira pintura, para o conteúdo não "piscar" sem blur. Só no
     // domínio publicado: aberto localmente (file://, localhost), o Turnstile e o Worker recusam a
@@ -234,6 +234,7 @@
       <div id="fwTool" class="tool"
            data-msg-copy="Copy configuration"
            data-msg-copied="Copied!"
+           data-msg-copy-block="Copy block"
            data-msg-copy-error="Could not copy"
            data-msg-remove="Remove firewall"
            data-msg-need-fw="Drag one firewall to Site A and another to Site B."
@@ -243,7 +244,7 @@
            data-msg-same-ip="The public IPs of the two sites must be different."
            data-msg-overlap="The LANs of the two sites cannot overlap."
            data-msg-psk="The pre-shared key must have 20 to 64 characters: letters, digits or !@#$%&amp;*_+=.,:-"
-           data-msg-ok="Configurations generated. Review them before applying to the devices."
+           data-msg-ok="Configurations generated, split into blocks in the order they should be applied. Review them before applying to the devices."
            data-msg-ifaces="Interfaces — WAN: {wan} · LAN: {lan} (adjust if needed)">
         <h3>Firewall Multivendor Configurator</h3>
         <p class="tool-intro">
@@ -253,11 +254,8 @@
         </p>
 
         <div class="fw-palette" role="group" aria-label="Firewalls">
-          <button type="button" class="fw-item v-srx" draggable="true" data-vendor="srx" data-label="SRX" aria-pressed="false">
-            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>SRX
-          </button>
-          <button type="button" class="fw-item v-juniper" draggable="true" data-vendor="juniper" data-label="Juniper" aria-pressed="false">
-            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>Juniper
+          <button type="button" class="fw-item v-srx" draggable="true" data-vendor="srx" data-label="Juniper SRX" aria-pressed="false">
+            <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>Juniper SRX
           </button>
           <button type="button" class="fw-item v-fortigate" draggable="true" data-vendor="fortigate" data-label="FortiGate" aria-pressed="false">
             <svg class="fw-icon" aria-hidden="true"><use href="#icon-fw" /></svg>FortiGate
@@ -267,8 +265,7 @@
           </button>
         </div>
         <p class="tool-hint">
-          Drag a firewall onto a site (or tap the firewall and then the site). SRX outputs
-          <code>set</code> commands; Juniper outputs the Junos configuration in hierarchical format.
+          Drag a firewall onto a site (or tap the firewall and then the site).
         </p>
 
         <div class="topology">
@@ -333,7 +330,7 @@
           </label>
           <button type="button" id="fwPskGen" class="btn-secondary">Generate new</button>
           <p class="tool-crypto">IKEv2 · AES-256-GCM · PRF SHA-384 · ECDH P-384 (DH 20) · PFS — CNSA suite,
-            the strongest supported by all four vendors (FortiOS 6.2+, PAN-OS 10.0+, Junos 15.1X49+).</p>
+            the strongest supported by all three vendors (FortiOS 6.2+, PAN-OS 10.0+, Junos 15.1X49+).</p>
         </div>
 
         <button type="button" id="fwDeploy" class="btn-primary">Deploy</button>
@@ -346,7 +343,7 @@
               <button type="button" class="btn-secondary btn-copy" data-target="fwCfgA">Copy configuration</button>
             </div>
             <p id="fwNoteA" class="fw-note"></p>
-            <pre><code id="fwCfgA"></code></pre>
+            <div id="fwCfgA" class="fw-blocks"></div>
           </div>
           <div class="fw-config">
             <div class="fw-config-head">
@@ -354,7 +351,7 @@
               <button type="button" class="btn-secondary btn-copy" data-target="fwCfgB">Copy configuration</button>
             </div>
             <p id="fwNoteB" class="fw-note"></p>
-            <pre><code id="fwCfgB"></code></pre>
+            <div id="fwCfgB" class="fw-blocks"></div>
           </div>
         </div>
       </div>
@@ -373,6 +370,6 @@
   </footer>
 
   <script src="../js/script.js?v=5"></script>
-  <script src="../js/fwconfig.js?v=2"></script>
+  <script src="../js/fwconfig.js?v=3"></script>
 </body>
 </html>
