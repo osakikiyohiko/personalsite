@@ -7,6 +7,8 @@
   --color-primary-dark: #1c3fc7;
   --color-border: #e2e4e9;
   --max-width: 960px;
+  /* O menu completo (com Ferramentas e Portfólios Web) não cabe em 960px. */
+  --max-width-nav: 1120px;
 }
 
 * {
@@ -46,7 +48,7 @@ a:hover {
 }
 
 .nav-container {
-  max-width: var(--max-width);
+  max-width: var(--max-width-nav);
   margin: 0 auto;
   padding: 1rem 1.5rem;
   display: flex;
@@ -55,6 +57,7 @@ a:hover {
 }
 
 .logo {
+  margin-right: 1.5rem;
   white-space: nowrap;
   font-weight: 700;
   font-size: 1.1rem;
@@ -71,6 +74,7 @@ nav ul {
 
 nav a {
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .nav-container nav {
@@ -254,6 +258,51 @@ nav a {
   padding: 1.5rem;
 }
 
+/* Portfólios Web: miniatura (captura da página inicial) no topo do card */
+
+.portfolio-cards {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.portfolio-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow: hidden;
+  padding-top: 0;
+}
+
+/* No flex as margens não colapsam; o espaçamento vem do gap. */
+.portfolio-card > * {
+  margin: 0;
+}
+
+.portfolio-card > a:last-child {
+  margin-top: auto;
+}
+
+.portfolio-preview {
+  display: block;
+  margin: 0 -1.5rem 0.25rem;
+  border-bottom: 1px solid var(--color-border);
+  overflow: hidden;
+}
+
+.portfolio-preview img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.3s;
+}
+
+.portfolio-preview:hover img,
+.portfolio-preview:focus-visible img {
+  transform: scale(1.03);
+}
+
 /* Footer */
 
 footer {
@@ -266,8 +315,8 @@ footer {
 
 /* Responsive */
 
-/* Com a aba Ferramentas, o menu completo fica justo logo acima do breakpoint mobile. */
-@media (max-width: 900px) {
+/* Com as abas Ferramentas e Portfólios Web, o menu completo fica justo logo acima do breakpoint mobile. */
+@media (max-width: 1100px) {
   nav ul {
     gap: 1rem;
   }
@@ -277,7 +326,7 @@ footer {
   }
 }
 
-@media (max-width: 820px) {
+@media (max-width: 940px) {
   .menu-toggle {
     display: flex;
   }

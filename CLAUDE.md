@@ -30,16 +30,22 @@ qualquer `git push` para `main` já republica o site.
 ## Estrutura
 
 - `index.html` — página principal (português), dividida em seções por `id` (`#inicio`, `#sobre`,
-  `#habilidades`, `#experiencia`, `#projetos`, `#contato`) referenciadas pelo menu de navegação.
-  A aba "Ferramentas" do menu leva à página própria `ferramentas/`.
+  `#habilidades`, `#experiencia`, `#projetos`, `#portfolios`, `#contato`) referenciadas pelo menu
+  de navegação. A aba "Ferramentas" do menu leva à página própria `ferramentas/`.
+- `#portfolios` ("Portfólios Web"/"Web Portfolios") — cards com miniatura de sites feitos pelo
+  André (`belaspatas`, `peso-pesado-team`). As miniaturas são capturas estáticas da página inicial
+  em `img/portfolio-<slug>.jpg` (800×500, 16:10), geradas com
+  `firefox --headless --window-size=1280,800 --screenshot` e recortadas sem a barra de rolagem (os
+  ~16px da direita) com PIL; ao mudar um desses sites, refazer a captura.
 - `ferramentas/index.html` e `en/ferramentas/index.html` — página da ferramenta "Firewall
   Multivendor Configurator" (ver seção própria abaixo), fora do `index.html`. Reaproveitam o
   cabeçalho (links do menu apontam para `../#secao`, aba atual com `aria-current="page"`), a
   verificação `#humanGate` e o rodapé; assets com `../` (pt) ou `../../` (en). **Mudanças no
   cabeçalho, no `<head>` ou na verificação precisam ser replicadas nas quatro páginas.**
 - `css/style.css` — todo o estilo, usando variáveis CSS em `:root` para cores e largura máxima do
-  conteúdo. Breakpoint do menu mobile em `820px` (com a aba Ferramentas, os links não cabem
-  abaixo disso; entre 821–900px o espaçamento do menu é reduzido); a topologia da ferramenta
+  conteúdo. O cabeçalho usa `--max-width-nav` (1120px), mais largo que o conteúdo, para caber o
+  menu completo. Breakpoint do menu mobile em `940px` (com as abas Ferramentas e Portfólios Web,
+  os links não cabem abaixo disso; entre 941–1100px o espaçamento do menu é reduzido); a topologia da ferramenta
   empilha abaixo de `720px`.
 - `js/script.js` — comportamentos da página: ano do rodapé, toggle do menu mobile (`.open` em
   `#navLinks`) e a verificação anti-robô `#humanGate` (ver seção própria abaixo).
@@ -66,7 +72,7 @@ bandeiras e hamburguer ficam sempre colados à direita (no desktop, logo após o
 sem depender de `order`. Separar bandeiras e botão em itens flex independentes faz as bandeiras
 "flutuarem" no meio do cabeçalho no mobile.
 
-O link do CSS usa `?v=N` (`css/style.css?v=10`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=8`) para furar o cache do navegador (GitHub Pages
+O link do CSS usa `?v=N` (`css/style.css?v=11`; o `js/script.js` também, `?v=5`; e `js/fwconfig.js?v=8`) para furar o cache do navegador (GitHub Pages
 serve com `max-age=600`); incrementar em ambas as páginas ao mudar o layout do cabeçalho.
 
 ## Ferramentas: Firewall Multivendor Configurator
